@@ -8,7 +8,7 @@ use std::env;
 use std::error::Error;
 use std::fs;
 use std::io::{self, Cursor, Read, Seek, SeekFrom};
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::UNIX_EPOCH;
@@ -390,9 +390,9 @@ fn main() {
     let rv = if let Some(cert) = cert {
         use hyper_native_tls::NativeTlsServer;
         let ssl = NativeTlsServer::new(cert, certpass.unwrap_or("")).unwrap();
-        server.https(&addr, ssl)
+        server.https(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7788), ssl)
     } else {
-        server.http(&addr)
+        server.http(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7788))
     };
     #[cfg(not(feature = "native-tls"))]
     let rv = if cert.is_some() {
