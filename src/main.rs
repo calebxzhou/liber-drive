@@ -666,7 +666,7 @@ impl MainHandler {
             });
 */
         }
-
+        entries.sort_by(|a, b| b.cmp(a));
         // Breadcrumb navigation
         /*let breadcrumb = if !path_prefix.is_empty() {
             let mut breadcrumb = path_prefix.to_owned();
