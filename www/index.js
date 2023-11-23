@@ -76,12 +76,14 @@ class File {
         let img = document.createElement('img');
         img.id="file_icon_"+this.name
         img.src = this.getIconSrc()
-        //文件名
-        let p = document.createElement('div');
-        p.id="file_p_"+this.name
-        p.innerHTML = this.name
         div.appendChild(img);
-        div.appendChild(p);
+        if(this.getType() !== 'img'){
+            //文件名
+            let p = document.createElement('span');
+            p.id="file_p_"+this.name
+            p.innerHTML = this.name
+            div.appendChild(p);
+        }
         if(this.isDir()){
             div.onclick = () => goNextDir(this.name)
         }else if(this.getType() === 'img'||this.getType()==='video'){
@@ -94,32 +96,52 @@ class File {
 
     }
     queryDetails(){
+        //读取缩略图
+        if(this.getType() === 'img'){
+            let icon = document.getElementById("file_icon_"+this.name);
+            icon.src =this.getFileQueryPath()+"?&thumbnail=1"
+            icon.style.height="128px"
+        }
+    }
+    queryByteSize(){
         //获取文件尺寸
         fetch(this.getFileQueryPath()+"?&size=1")
             .then(response => response.text())
             .then(data => {
-                document.getElementById("file_p_"+this.name).innerHTML +="<br>💾"+humanReadableSize(data)
+                this.byteSize = data
+                //document.getElementById("file_p_"+this.name).innerHTML +="<br>💾"+humanReadableSize(data)
             })
             .catch((error) => {
                 console.error('Error:', error);
             });
+    }
+    queryModTime(){
         //修改时间
         fetch(this.getFileQueryPath()+"?&mod_time=1")
             .then(response => response.text())
             .then(data => {
-                document.getElementById("file_p_"+this.name).innerHTML +="<br>🕒"+humanReadableTime(data)
+                this.modTime = data
+                //document.getElementById("file_p_"+this.name).innerHTML +="<br>🕒"+humanReadableTime(data)
             })
             .catch((error) => {
                 console.error('Error:', error);
             });
-        //是图片，就读取缩略图
-        if(this.getType() === 'img'){
-            document.getElementById("file_icon_"+this.name).src =this.getFileQueryPath()+"?&thumbnail=1"
-        }
     }
 }
 window.onload = function() {
     updateDir("/")
+}
+function getFileByteSize(fileQueryPath, doOnSuccess){
+    //获取文件尺寸
+    fetch(fileQueryPath+"?&size=1")
+
+        .then(response => response.text())
+        .then(data => {
+            doOnSuccess(data)
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
 }
 function getCurrentPath(){
     return PATH.join("/")
@@ -158,7 +180,7 @@ function changeTitle(titleStr){
 }
 
 function clearFileGrid(){
-    document.getElementById("imageGrid").innerHTML=""
+    document.getElementById("fileGrid").innerHTML=""
 }
 function parseDirData(json){
     for(let ele of json){
@@ -166,7 +188,7 @@ function parseDirData(json){
     }
 
     for (let file of FILES) {
-        document.getElementById("imageGrid").appendChild(file.getDomElement());
+        document.getElementById("fileGrid").appendChild(file.getDomElement());
     }
     for (let file of FILES) {
         file.queryDetails()
@@ -219,38 +241,47 @@ function openViewer(allDriveFiles,currFile){
     document.getElementById('viewer').style.display = 'flex';
 }
 
-function closeImageViewer() {
+function closeViewer() {
+    clearImageViewer();
     document.getElementById('viewer').style.display = 'none';
 }
 function clearImageViewer(){
     document.getElementById('viewerImage').src = "";
     document.getElementById('player').src = "";
     document.getElementById('player').style.display = "none";
+    document.getElementById('show_full_image_btn').style.display = "none";
 }
 function nextImage() {
-    clearImageViewer();
     currentImageIndex = (currentImageIndex + 1) % imageVideos.length;
     changeImage(imageVideos[currentImageIndex])
 }
 
 function prevImage() {
-    clearImageViewer();
     currentImageIndex = (currentImageIndex - 1 + imageVideos.length) % imageVideos.length;
     changeImage(imageVideos[currentImageIndex])
 }
+const showFullImageStr = '💾查看原图'
 function changeImage(imageDriveFile){
+    clearImageViewer()
     document.getElementById('image-viewer-text').innerText = imageDriveFile.name
-    let v = document.getElementById('player');
-    v.style.display = 'none'
     if (imageDriveFile.getType() === 'img'){
         let image = document.getElementById('viewerImage');
-        image.src = imageDriveFile.getFileQueryPath();
+        image.src = imageDriveFile.getFileQueryPath()+"?webp=1";
+        let sizeStr = document.getElementById("show_full_image_btn").innerText;
+        getFileByteSize(imageDriveFile.getFileQueryPath(),(data)=>
+            document.getElementById("show_full_image_btn").innerText =showFullImageStr  + humanReadableSize(data)
+        )
+        document.getElementById("show_full_image_btn").style.display = "";
     }else if(imageDriveFile.getType() === 'video'){
-        v.style.display='flex'
+        let v = document.getElementById('player');
+        v.style.display='block'
         v.src = imageDriveFile.getFileQueryPath();
     }
-
-
+}
+function showFullImage(){
+    let image = document.getElementById('viewerImage');
+    image.src = image.src.replace("?webp=1","")
+    document.getElementById("show_full_image_btn").style.display = "none";
 }
 function showExif(){
     let image = document.getElementById('viewerImage');

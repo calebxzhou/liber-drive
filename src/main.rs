@@ -531,6 +531,10 @@ impl Handler for MainHandler {
             let thumbnail = get_or_create_thumbnail(&fs_path.to_path_buf()).unwrap_or(Vec::new());
             return Ok(Response::with((status::Ok, thumbnail)))
         }
+        if params.contains_key("webp"){
+            let thumbnail = get_or_create_webp(&fs_path.to_path_buf()).unwrap_or(Vec::new());
+            return Ok(Response::with((status::Ok, thumbnail)))
+        }
         //发送目录/文件
         if path_metadata.is_dir() {
             let path_prefix: Vec<String> = path_prefix
@@ -1116,7 +1120,9 @@ fn get_file_size(file_path: &PathBuf) ->  Result<u64,Box<dyn Error>>{
  fn get_or_create_thumbnail(img_path: &PathBuf) -> Result<Vec<u8>,Box<dyn Error>>{
     let img_size = get_file_size(img_path)?;
     let mut cache_file_name = img_size.to_string();
+    cache_file_name.push_str("tbnl_");
     cache_file_name.push_str(img_path.file_name().unwrap().to_str().unwrap());
+    cache_file_name.push_str(".webp");
     let cache_path = Path::new("cache").join(&cache_file_name);
     if cache_path.exists() {
         let mut file = std::fs::File::open(&cache_path)?;
@@ -1126,10 +1132,29 @@ fn get_file_size(file_path: &PathBuf) ->  Result<u64,Box<dyn Error>>{
     } else {
         let image = image::open(img_path)?;
         let thumbnail = image.thumbnail(256, 256);
-        let mut bytes: Vec<u8> = Vec::new();
-        let mut writer = Cursor::new(&mut bytes);
-        thumbnail.write_to(&mut writer, ImageOutputFormat::Jpeg(80))?;
-        fs::write(&cache_path, &bytes)?;
-        Ok(bytes)
+        let webp = webp::Encoder::from_image(&thumbnail)?;
+        let pic_mem = webp.encode(0.50f32);
+        fs::write(&cache_path, &*pic_mem)?;
+        Ok(pic_mem.to_vec())
+    }
+}
+//创建缩略图
+fn get_or_create_webp(img_path: &PathBuf) -> Result<Vec<u8>,Box<dyn Error>>{
+    let img_size = get_file_size(img_path)?;
+    let mut cache_file_name = img_size.to_string();
+    cache_file_name.push_str(img_path.file_name().unwrap().to_str().unwrap());
+    cache_file_name.push_str(".webp");
+    let cache_path = Path::new("cache").join(&cache_file_name);
+    if cache_path.exists() {
+        let mut file = std::fs::File::open(&cache_path)?;
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer)?;
+        Ok(buffer)
+    } else {
+        let image = image::open(img_path)?;
+        let webp = webp::Encoder::from_image(&image)?;
+        let pic_mem = webp.encode(0.50f32);
+        fs::write(&cache_path, &*pic_mem)?;
+        Ok(pic_mem.to_vec())
     }
 }
