@@ -1133,7 +1133,7 @@ fn get_file_size(file_path: &PathBuf) ->  Result<u64,Box<dyn Error>>{
         let image = image::open(img_path)?;
         let thumbnail = image.thumbnail(256, 256);
         let webp = webp::Encoder::from_image(&thumbnail)?;
-        let pic_mem = webp.encode(0.80f32);
+        let pic_mem = webp.encode(1.0f32);
         fs::write(&cache_path, &*pic_mem)?;
         Ok(pic_mem.to_vec())
     }
