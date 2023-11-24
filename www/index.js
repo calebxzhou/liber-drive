@@ -26,6 +26,16 @@ let PATH= []
 let FILES = []
 
 /**
+ *
+ * @type {HTMLDivElement}
+ */
+let IMAGE_ROOT_DIV
+/**
+ * 当前目录下全部视频
+ * @type {HTMLImageElement[]}
+ */
+let IMAGE_ELEMENTS = []
+/**
  * 文件
  */
 class File {
@@ -88,7 +98,7 @@ class File {
         if(this.isDir()){
             div.onclick = () => goNextDir(this.name)
         }else if(this.getType() === 'img'){
-            div.onclick = () => openImageViewer(FILES,this)
+            div.onclick = () => openImageViewer(this)
         }else if(this.getType()==='video'){
             div.onclick = () => openViewer(FILES,this)
         }
@@ -166,6 +176,8 @@ function updateDir(){
     window.stop()
     clearFileGrid()
     FILES = []
+    IMAGE_ELEMENTS = []
+    IMAGE_ROOT_DIV = document.createElement('div')
     fetch("_drive/"+path)
         .then(response => response.json())
         .then(data => parseDirData(data))
@@ -196,6 +208,11 @@ function changeTitle(titleStr){
 function clearFileGrid(){
     document.getElementById("fileGrid").innerHTML=""
 }
+
+/**
+ * @type {Viewer}
+ */
+let gallery;
 function parseDirData(json){
     for(let ele of json){
         FILES.push(new File(ele))
@@ -203,10 +220,20 @@ function parseDirData(json){
 
     for (let file of FILES) {
         document.getElementById("fileGrid").appendChild(file.getDomElement());
+        if (file.getType() === 'img'){
+            let image = document.createElement('img')
+            image.src =  file.getFileQueryPath()+"?webp=1"
+            image.setAttribute("img_name",file.name)
+            IMAGE_ELEMENTS.push(image)
+        }
+    }
+    for (let imgE of IMAGE_ELEMENTS) {
+        IMAGE_ROOT_DIV.appendChild(imgE)
     }
     for (let file of FILES) {
         file.queryDetails()
     }
+    gallery = new Viewer(IMAGE_ROOT_DIV);
 }
 
 function humanReadableSize(byte) {
@@ -251,8 +278,8 @@ function humanReadableTime(timestamp) {
  * @param {File[]} allDriveFiles
  * @param {File} currFile
  */
-function openImageViewer(allDriveFiles,currFile){
-    let div = document.createElement('div');
+function openImageViewer(currFile){
+    /*let div = document.createElement('div');
     let imageFirst = document.createElement('img')
     imageFirst.src =  currFile.getFileQueryPath()+"?webp=1"
     div.appendChild(imageFirst)
@@ -262,9 +289,10 @@ function openImageViewer(allDriveFiles,currFile){
             image.src =  file.getFileQueryPath()+"?webp=1"
             div.appendChild(image)
         }
-    }
-    const gallery = new Viewer(div);
+    }*/
+    let index = IMAGE_ELEMENTS.findIndex((ele) => ele.getAttribute("img_name")==currFile.name)
     gallery.show()
+    gallery.view(index)
 }
 let currentImageIndex = 0;
 let imageVideos = [];

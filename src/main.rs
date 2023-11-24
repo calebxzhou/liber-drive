@@ -1090,7 +1090,7 @@ impl MainHandler {
             }
         }
 
-        if self.cache {
+        /*if self.cache {
             static SECONDS: u32 = 7 * 24 * 3600; // max-age: 7.days()
             if let Some(&IfModifiedSince(HttpDate(ref if_modified_since))) =
                 req.headers.get::<IfModifiedSince>()
@@ -1103,7 +1103,8 @@ impl MainHandler {
             resp.headers.set(CacheControl(cache));
             resp.headers.set(LastModified(HttpDate(time::at(modified))));
             resp.headers.set(ETag(etag));
-        }
+        }*/
+        resp.headers.set(CacheControl(vec![CacheDirective::NoStore,CacheDirective::MustRevalidate]));
         Ok(resp)
     }
 }
