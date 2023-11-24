@@ -86,7 +86,9 @@ class File {
         }
         if(this.isDir()){
             div.onclick = () => goNextDir(this.name)
-        }else if(this.getType() === 'img'||this.getType()==='video'){
+        }else if(this.getType() === 'img'){
+            div.onclick = () => openImageViewer(FILES,this)
+        }else if(this.getType()==='video'){
             div.onclick = () => openViewer(FILES,this)
         }
         else  {
@@ -131,6 +133,17 @@ class File {
 window.onload = function() {
     updateDir("/")
 }
+document.onkeydown = function(event) {
+    switch (event.keyCode) {
+        case 37: // Left arrow key
+            prevImage();
+            break;
+        case 39: // Right arrow key
+            nextImage();
+            break;
+    }
+};
+
 function getFileByteSize(fileQueryPath, doOnSuccess){
     //获取文件尺寸
     fetch(fileQueryPath+"?&size=1")
@@ -231,8 +244,28 @@ function humanReadableTime(timestamp) {
 
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
+
+/**
+ *
+ * @param {File[]} allDriveFiles
+ * @param {File} currFile
+ */
+function openImageViewer(allDriveFiles,currFile){
+    let div = document.createElement('div');
+    let imageFirst = document.createElement('img')
+    imageFirst.src =  currFile.getFileQueryPath()+"?webp=1"
+    div.appendChild(imageFirst)
+    for (let file of allDriveFiles) {
+        let image = document.createElement('img')
+        image.src =  file.getFileQueryPath()+"?webp=1"
+        div.appendChild(image)
+    }
+    const gallery = new Viewer(div);
+    gallery.show()
+}
 let currentImageIndex = 0;
 let imageVideos = [];
+
 function openViewer(allDriveFiles,currFile){
     imageVideos = allDriveFiles
         .filter((file) => file.getType()==='img'|| file.getType()==='video')

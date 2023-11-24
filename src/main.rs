@@ -384,7 +384,7 @@ fn main() {
         });
     }
     let mut server = Iron::new(chain);
-    //server.threads = threads as usize;
+    server.threads = 64;//threads as usize;
 
     #[cfg(feature = "native-tls")]
     let rv = if let Some(cert) = cert {
