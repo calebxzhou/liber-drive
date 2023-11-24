@@ -229,7 +229,7 @@ fn main() {
         .map(iron::Url::parse)
         .map(Result::unwrap);
     let sort = !matches.is_present("nosort");
-    let cache = !matches.is_present("nocache");
+    let cache = false;// !matches.is_present("nocache");
     let range = !matches.is_present("norange");
     let cert = matches.value_of("cert");
     let certpass = matches.value_of("certpass");
@@ -1133,12 +1133,12 @@ fn get_file_size(file_path: &PathBuf) ->  Result<u64,Box<dyn Error>>{
         let image = image::open(img_path)?;
         let thumbnail = image.thumbnail(256, 256);
         let webp = webp::Encoder::from_image(&thumbnail)?;
-        let pic_mem = webp.encode(1.0f32);
+        let pic_mem = webp.encode(80f32);
         fs::write(&cache_path, &*pic_mem)?;
         Ok(pic_mem.to_vec())
     }
 }
-//创建缩略图
+
 fn get_or_create_webp(img_path: &PathBuf) -> Result<Vec<u8>,Box<dyn Error>>{
     let img_size = get_file_size(img_path)?;
     let mut cache_file_name = img_size.to_string();
@@ -1153,7 +1153,7 @@ fn get_or_create_webp(img_path: &PathBuf) -> Result<Vec<u8>,Box<dyn Error>>{
     } else {
         let image = image::open(img_path)?;
         let webp = webp::Encoder::from_image(&image)?;
-        let pic_mem = webp.encode(0.50f32);
+        let pic_mem = webp.encode(50f32);
         fs::write(&cache_path, &*pic_mem)?;
         Ok(pic_mem.to_vec())
     }

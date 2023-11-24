@@ -1,3 +1,4 @@
+
 /**
  * 文件类型与扩展名
  * @type {{zip: string[], excel: string[], img: string[], code: string[], ppt: string[], imgRaw: string[], text: string[], video: string[], word: string[]}}
@@ -133,7 +134,7 @@ class File {
 window.onload = function() {
     updateDir("/")
 }
-document.onkeydown = function(event) {
+/*document.onkeydown = function(event) {
     switch (event.keyCode) {
         case 37: // Left arrow key
             prevImage();
@@ -142,7 +143,7 @@ document.onkeydown = function(event) {
             nextImage();
             break;
     }
-};
+};*/
 
 function getFileByteSize(fileQueryPath, doOnSuccess){
     //获取文件尺寸
@@ -256,9 +257,11 @@ function openImageViewer(allDriveFiles,currFile){
     imageFirst.src =  currFile.getFileQueryPath()+"?webp=1"
     div.appendChild(imageFirst)
     for (let file of allDriveFiles) {
-        let image = document.createElement('img')
-        image.src =  file.getFileQueryPath()+"?webp=1"
-        div.appendChild(image)
+        if(file.getType() === 'img'){
+            let image = document.createElement('img')
+            image.src =  file.getFileQueryPath()+"?webp=1"
+            div.appendChild(image)
+        }
     }
     const gallery = new Viewer(div);
     gallery.show()
@@ -293,7 +296,7 @@ function prevImage() {
     currentImageIndex = (currentImageIndex - 1 + imageVideos.length) % imageVideos.length;
     changeImage(imageVideos[currentImageIndex])
 }
-const showFullImageStr = '💾查看原图'
+const SHOW_FULL_IMAGE_STR = '💾查看原图'
 function changeImage(imageDriveFile){
     clearImageViewer()
     document.getElementById('image-viewer-text').innerText = imageDriveFile.name
@@ -302,7 +305,7 @@ function changeImage(imageDriveFile){
         image.src = imageDriveFile.getFileQueryPath()+"?webp=1";
         let sizeStr = document.getElementById("show_full_image_btn").innerText;
         getFileByteSize(imageDriveFile.getFileQueryPath(),(data)=>
-            document.getElementById("show_full_image_btn").innerText =showFullImageStr  + humanReadableSize(data)
+            document.getElementById("show_full_image_btn").innerText =SHOW_FULL_IMAGE_STR  + humanReadableSize(data)
         )
         document.getElementById("show_full_image_btn").style.display = "";
     }else if(imageDriveFile.getType() === 'video'){
@@ -312,9 +315,9 @@ function changeImage(imageDriveFile){
     }
 }
 function showFullImage(){
-    let image = document.getElementById('viewerImage');
-    image.src = image.src.replace("?webp=1","")
-    document.getElementById("show_full_image_btn").style.display = "none";
+    let image = document.getElementById('current-viewing-img');
+    image.src = image.getAttribute("full-picture-url")
+    document.getElementById("show-full-image-span").style.display='none'
 }
 function showExif(){
     let image = document.getElementById('viewerImage');
