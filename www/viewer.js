@@ -107,7 +107,7 @@ var DEFAULTS = {
      * Show the navbar.
      * @type {boolean | number}
      */
-    navbar: true,
+    navbar: false,
     /**
      * Specify the visibility and the content of the title.
      * @type {boolean | number | Function | Array}
