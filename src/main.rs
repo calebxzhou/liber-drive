@@ -1104,7 +1104,7 @@ impl MainHandler {
             resp.headers.set(LastModified(HttpDate(time::at(modified))));
             resp.headers.set(ETag(etag));
         }*/
-        resp.headers.set(CacheControl(vec![CacheDirective::NoStore,CacheDirective::MustRevalidate]));
+        resp.headers.set(CacheControl(vec![CacheDirective::NoCache,CacheDirective::NoStore,CacheDirective::MustRevalidate]));
         Ok(resp)
     }
 }
