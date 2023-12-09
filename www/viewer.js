@@ -1885,8 +1885,8 @@ var methods = {
             var imageData = _this2.imageData;
             let filePath = document.getElementById("current-viewing-img").getAttribute('full-picture-url')
             title.innerHTML = `
-                ${alt} ${((imageData.naturalWidth*imageData.naturalHeight)/1000).toFixed()}万像素
-                 <span id="show-full-image-span" onclick="showFullImage()">${SHOW_FULL_IMAGE_STR}</span>
+                <span id="show-full-image-span" onclick="showFullImage()">${SHOW_FULL_IMAGE_STR}</span> ${alt}
+              
             `
             getFileByteSize(filePath,function (data) {
                 document.getElementById("show-full-image-span").innerText=SHOW_FULL_IMAGE_STR+humanReadableSize(data)
