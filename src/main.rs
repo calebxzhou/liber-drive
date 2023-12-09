@@ -26,6 +26,7 @@ use iron::status::Status;
 use iron_cors::CorsMiddleware;
 use lazy_static::lazy_static;
 use mime_guess as mime_types;
+use mime_guess::{get_extensions, mime};
 use multipart::server::{Multipart, SaveResult};
 use path_dedot::ParseDot;
 use percent_encoding::percent_decode;
@@ -934,7 +935,9 @@ impl MainHandler {
         ));
 
         let mut resp = Response::with(status::Ok);
-
+        if path.ends_with(".html") || path.ends_with(".js") || path.ends_with(".css") || path.ends_with(".svg"){
+            resp.headers.set(CacheControl(vec![CacheDirective::NoCache,CacheDirective::NoStore,CacheDirective::MustRevalidate]));
+        }
         if self.range {
             resp.headers.set(AcceptRanges(vec![RangeUnit::Bytes]));
         }
@@ -945,6 +948,7 @@ impl MainHandler {
                     .get::<ContentType>()
                     .cloned()
                     .unwrap_or_else(|| ContentType(Mime(TopLevel::Text, SubLevel::Plain, vec![])));
+                
                 resp.headers.set(content_type);
                 resp.headers.set(ContentLength(metadata.len()));
             }
@@ -1104,7 +1108,6 @@ impl MainHandler {
             resp.headers.set(LastModified(HttpDate(time::at(modified))));
             resp.headers.set(ETag(etag));
         }*/
-        resp.headers.set(CacheControl(vec![CacheDirective::NoCache,CacheDirective::NoStore,CacheDirective::MustRevalidate]));
         Ok(resp)
     }
 }
