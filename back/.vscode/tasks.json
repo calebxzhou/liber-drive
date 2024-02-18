@@ -1,0 +1,23 @@
+{
+    "tasks": [
+        {
+            "type": "cargo",
+            "command": "build",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "build",
+            "label": "rust: cargo build"
+        },
+        {
+            "label": "cargo run",
+            "type": "shell",
+            "command": "~/.cargo/bin/cargo", // Full path to the cargo executable
+            "args": ["run"],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        }
+    ]
+}

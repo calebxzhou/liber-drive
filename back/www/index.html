@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="UTF-8">
+    <link href="index.css" rel="stylesheet">
+    <link href="viewer.css" rel="stylesheet">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>嘉乐周的光影世界</title>
+</head>
+<body>
+<div class="navbar">
+    <div class="back-button" onclick="goPrevDir()">《</div>
+    <div id="title"></div>
+    <div></div>
+</div>
+<div id="fileGrid"></div>
+<div id="viewer">
+    <div class="close-button" onclick="closeViewer()">✖</div>
+    <div id="image-viewer-text"></div>
+    <img id="viewerImage"/>
+    <video controls crossorigin playsinline id="player"></video>
+    <div id="camera_info_display_div">📷</div>
+    <div class="controls">
+        <button onclick="prevImage()">⬅️上一张</button>
+        <button id="show_full_image_btn" onclick="showFullImage()"></button>
+        <button onclick="nextImage()">➡️下一张</button>
+    </div>
+</div>
+</body>
+<script src="index.js"></script>
+<script src="viewer.js"></script>
