@@ -1,54 +1,57 @@
-<script setup>
+<script setup lang="ts">
+import { FILE_TYPE_EXTENSION } from '@/const';
 import axios from 'axios';
-import FileItem from './file_item.js'
-
-import { ref, onMounted } from 'vue'
-const props = defineProps({
-    name: String,
-    queryUrl: String,
-    mode: String
-})
-const fileItem = new FileItem(props.name, props.queryUrl);
-const mediaPreview = ref(null);
+import { toRefs } from 'vue';
+import { ref, onMounted } from 'vue' 
+import { FileItem } from './FileItem';
+const props = defineProps<FileItem>()
+const {name,queryUrl} = toRefs(props);
+//扩展名
+const extension = name.value
+      .slice(((name.value.lastIndexOf(".") - 1) >>> 0) + 2)
+      .toLowerCase()
+//是否目录
+const isDir = name.value.endsWith('/');
+//显示名称 不显示下划线 不显示结尾斜杠
+const displayName = name.value.replaceAll("_", " ").replaceAll(".", " .").replaceAll("/","")
+//类型 无法识别则为file
+const type = Object.entries(FILE_TYPE_EXTENSION).reduce(
+      (acc, [key, value]) =>
+        value.includes(extension) ? key : acc,
+      "file"
+    ); 
+//是否图片
+const isImage = type === 'img';
+//是否视频
+const isVideo = type === 'video';
+//是否媒体（图片+视频）
+const isMedia = isImage || isVideo;
+//图标
+const icon: string = isDir? '📁': (isImage?'🖼️':isVideo?'🎥':'📜')
+//预览图      
+const preview = ref("");
+//载入进度
 const loadPercent = ref(0);
-/**
- * 文件的显示名称 不显示下划线 目录不显示结尾斜杠
- */
-const displayName = () => {
-    let name = props.name.replaceAll("_", " ").replaceAll(".", " .");
-    if (fileItem.isDir()) {
-        name = name.slice(0, -1);
-    }
-    return name;
-}
-/**
- * 载入预览图
- * @param {number} viewLvl 
- */
-const fetchPreview = (viewLvl) => {
-    axios.get(props.queryUrl + "?preview=" + viewLvl, {
+
+//载入预览图
+async function fetchPreview(viewLvl:number){
+    let resp = await axios.get(queryUrl.value + "?preview=" + viewLvl, {
         responseType: 'blob',
         onDownloadProgress: function (progressEvent) {
-            loadPercent.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            if (progressEvent.total) {
+                return loadPercent.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            }
         }
     })
-        .then(function (response) {
-            var blob = window.URL.createObjectURL(new Blob([response.data]));
-            mediaPreview.value = blob;
-        })
-        .catch(function (error) {
-            console.log('Failed to download image: ' + error);
-        });
+    var blob = window.URL.createObjectURL(new Blob([resp.data]));
+    preview.value = blob;
 }
+
 onMounted(() => {
-    //相册模式
-    if (props.mode === "GALLERY") {
-        //媒体文件
-        if (fileItem.isMedia()) {
+        if (isMedia) {
             //预览
             fetchPreview(2); //128px
         }
-    }
 
 })
 </script>
@@ -58,17 +61,7 @@ onMounted(() => {
     <div class="flex flex-col items-center
   max-sm:w-1/3 sm:w-1/3 md:w-1/4 lg:w-1/6 xl:w-1/12 2xl:w-1/16
   text-center hover:bg-gray-300 cursor-pointer">
-        <!-- 相册模式 -->
-        <div v-if="mode === 'GALLERY'">
-            <!-- 目录 -->
-            <div v-if="fileItem.isDir()">
-                <div class="text-7xl">
-                    {{ fileItem.getIcon() }}
-                </div>
-                <span class="">
-                    {{ displayName() }}
-                </span>
-            </div>
+            
             <!-- 媒体 -->
             <div v-if="fileItem.getType() === 'img'">
                 <!-- 预览载入中 -->
@@ -103,5 +96,4 @@ onMounted(() => {
         </div>
 
 
-    </div>
 </template>
