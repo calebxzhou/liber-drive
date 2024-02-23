@@ -7,6 +7,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 front/node_modules
+front-ng/node_modules
+front-ng/.angular
+front/node_modules
 front/dist
 front/dist-ssr
 *.local

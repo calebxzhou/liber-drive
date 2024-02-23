@@ -1,0 +1,16 @@
+<div
+  class="flex flex-col items-center w-24 text-center hover:bg-gray-300 cursor-pointer"
+>
+  <div *ngIf="!imageLoaded">
+    <div class="text-7xl">🖼️</div>
+    <span class="">
+      {{ fileItem.displayName }}
+    </span>
+  </div>
+
+  <img
+    *ngIf="imageLoaded"
+    class="w-32 h-32 object-cover object-center"
+    :src="imageData"
+  />
+</div>
