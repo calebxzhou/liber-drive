@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs;
+use std::fs::File;
+use std::io::BufReader;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::path::{Path, PathBuf};
@@ -16,6 +18,7 @@ use iron::{Chain, Handler, Iron, IronError, IronResult, Request, Response, Set};
 use iron_cors::CorsMiddleware;
 use lazy_static::lazy_static;
 use mime_guess as mime_types;
+use mime_types::from_path;
 use path_dedot::ParseDot;
 use percent_encoding::percent_decode;
 use serde::Serialize;
@@ -24,6 +27,7 @@ use termcolor::Color;
 use color::{build_spec, Printer};
 use middlewares::RequestLogger;
 use util::{error_io2iron, StringError};
+use walkdir::WalkDir;
 
 use crate::media_processing::{get_image_exif, get_media_preview};
 
@@ -32,40 +36,16 @@ mod media_processing;
 mod middlewares;
 mod test;
 mod util;
+pub mod media_item;
+pub mod media_scanner;
 
 
 fn main() {
-    let matches = clap::App::new("LiberDrive")
-        .setting(clap::AppSettings::ColoredHelp)
-        .version("1.0")
-        .arg(
-            clap::Arg::with_name("drive_dir")
-                .short("d")
-                .long("drive_dir")
-                .index(1)
-                .validator(|s| match fs::metadata(s) {
-                    Ok(metadata) => {
-                        if metadata.is_dir() {
-                            Ok(())
-                        } else {
-                            Err("Not directory".to_owned())
-                        }
-                    }
-                    Err(e) => Err(e.to_string()),
-                })
-                .help("Root directory"),
-        )
-         .get_matches();
+    let drive_dir = read_file_to_string("drive_dir.txt").expect("工作目录读取失败");
+    println!("工作目录：{}", drive_dir);
+    let drive_dir = PathBuf::from(drive_dir).canonicalize().unwrap();
 
-    let drive_dir = matches
-        .value_of("drive_dir")
-        .map(|s| PathBuf::from(s).canonicalize().unwrap())
-        .unwrap_or_else(|| env::current_dir().unwrap());
-    //let cert = matches.value_of("cert");
-    //let certpass = matches.value_of("certpass");
-    let printer = Printer::new();
-
-    println!("工作目录：{}", drive_dir.to_str().unwrap().to_owned());
+    //扫描
 
     let mut chain = Chain::new(MainHandler { drive_dir });
 
@@ -96,6 +76,15 @@ fn main() {
 struct MainHandler {
     drive_dir: PathBuf,
 }
+fn read_file_to_string(file_path: &str) -> std::io::Result<String> {
+    let file = File::open(file_path)?;
+    let mut buf_reader = BufReader::new(file);
+    let mut contents = String::new();
+    buf_reader.read_to_string(&mut contents)?;
+
+    Ok(contents)
+}
+
 
 impl Handler for MainHandler {
     fn handle(&self, req: &mut Request) -> IronResult<Response> {
