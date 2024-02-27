@@ -25,7 +25,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["C:/Users/calebxzhou/Pictures"],
+            "args": [],
             "cwd": "${workspaceFolder}"
         }
     ]
