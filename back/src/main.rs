@@ -44,6 +44,7 @@ use media_processing::get_media_preview;
 use media_sender::handle_file;
 use mime_guess as mime_types;
 use tower::ServiceBuilder;
+use tower_http::cors::CorsLayer;
 use util::convert_http_date_to_u64;
 use util::convert_u64_to_http_date; 
 
@@ -129,7 +130,12 @@ async fn main() {
             "/media/:id",
             get(get_media).with_state(Arc::clone(&serv)),
         )
-        .layer(compression_layer);
+        .layer(compression_layer)
+    .layer(CorsLayer::new()
+        .allow_origin("*".parse::<HeaderValue>().unwrap())
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(vec![CONTENT_TYPE])
+    );
 
     // run our app with hyper, listening globally on port 3000
     let listener =
