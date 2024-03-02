@@ -1,198 +1,171 @@
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::env;
 use std::fs;
 use std::fs::File;
-use std::io::BufReader;
+use std::io::Write;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 
+use axum::body::Body;
+use axum::body::Bytes;
+use axum::extract::State;
+use axum::http::header;
+use axum::http::header::CACHE_CONTROL;
+use axum::http::header::CONTENT_TYPE;
+use axum::http::header::ETAG;
+use axum::http::header::LAST_MODIFIED;
+use axum::http::header::RANGE;
+use axum::http::Extensions;
+use axum::http::HeaderMap;
+use axum::http::HeaderValue;
+use axum::http::Request;
+use axum::http::Response;
+use axum::http::StatusCode;
+use axum::Json;
+use axum::Router;
+use axum::{response::IntoResponse, routing::get};
+use chrono::Local;
 use clap::crate_version;
-use iron::headers::{
-    ContentType, ETag, IfModifiedSince, LastModified,
-};
-use iron::mime::{Mime, SubLevel, TopLevel};
-use iron::status;
-use iron::{Chain, Handler, Iron, IronError, IronResult, Request, Response, Set};
-use iron_cors::CorsMiddleware;
+use env_logger::Builder;
+use filetime::FileTime;
+use gallery::Gallery;
+
 use lazy_static::lazy_static;
+use log::info;
+use log::LevelFilter;
+use media_processing::get_media_preview;
+use media_sender::handle_file;
 use mime_guess as mime_types;
-use mime_types::from_path;
-use path_dedot::ParseDot;
-use percent_encoding::percent_decode;
-use serde::Serialize;
-use termcolor::Color;
 
-use color::{build_spec, Printer};
-use middlewares::RequestLogger;
-use util::{error_io2iron, StringError};
-use walkdir::WalkDir;
 
-use crate::media_processing::{get_image_exif, get_media_preview};
-
-mod color;
+use crate::main_service::MainService; 
+use tower_http::compression::CompressionLayer; 
+mod gallery;
+pub mod main_service;
+pub mod media_item;
 mod media_processing;
-mod middlewares;
+pub mod media_scanner; 
 mod test;
 mod util;
-pub mod media_item;
-pub mod media_scanner;
+pub mod media_sender;
 
+//载入日志
+fn logger_init() {
+    Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} [{}] - {}",
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .filter(None, LevelFilter::Info)
+        .init();
+}
+//载入工作目录
+fn load_drive_dir() -> PathBuf {
+    let path = std::path::Path::new("drive_dir.txt");
+    let mut file = if path.exists() {
+        File::open(&path).unwrap()
+    } else {
+        let mut file = File::create(&path).unwrap();
+        file.write_all(b".");
+        file
+    };
+    let mut contents = String::new();
+    file.read_to_string(&mut contents);
+    let dir = PathBuf::from(contents).canonicalize().unwrap();
+    info!("工作目录：{}", dir.display().to_string());
+    dir
+}
+#[tokio::main]
+async fn main() {
+    logger_init();
+    fs::create_dir_all("cache").expect("创建缓存目录失败");
+    let drive_dir = load_drive_dir();
+    let compression_layer = CompressionLayer::new()
+    .gzip(true)
+    .deflate(true)
+    .br(true)
+    .compress_when(|status: axum::http::StatusCode, _version: axum::http::Version, headers: &HeaderMap, _extensions: &Extensions| {
+        // Get the content type of the response
+        let content_type = headers.get(  CONTENT_TYPE);
 
-fn main() {
-    let drive_dir = read_file_to_string("drive_dir.txt").expect("工作目录读取失败");
-    println!("工作目录：{}", drive_dir);
-    let drive_dir = PathBuf::from(drive_dir).canonicalize().unwrap();
+        // If the content type is an image or video, do not compress
+        if let Some(content_type) = content_type {
+            let content_type = content_type.to_str().unwrap_or_default();
+            if content_type.starts_with("image/") || content_type.starts_with("video/") {
+                return false;
+            }
+        }
 
-    //扫描
-
-    let mut chain = Chain::new(MainHandler { drive_dir });
-
-    chain.link_around(CorsMiddleware::with_allow_any());
-
-    chain.link_after(RequestLogger {
-        printer: Printer::new(),
+        // Otherwise, compress the response
+        true
     });
 
-    let mut server = Iron::new(chain);
-    server.threads = 256; //threads as usize;
-
-    /* #[cfg(feature = "native-tls")]
-    let rv = if let Some(cert) = cert {
-        use hyper_native_tls::NativeTlsServer;
-        let ssl = NativeTlsServer::new(cert, certpass.unwrap_or("")).unwrap();
-        server.https(
-            SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789),
-            ssl,
+    let serv = MainService::new(&drive_dir);
+    let serv = Arc::new(serv);
+    let app = Router::new()
+        .route(
+            "/galleries",
+            get(get_all_galleries).with_state(Arc::clone(&serv)),
         )
-    } else { */
-        server.http(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789));
-    //};
+        .route(
+            "/preview/:id/:level",
+            get(get_preview).with_state(Arc::clone(&serv)),
+        )
+        .route(
+            "/media/:id",
+            get(get_media).with_state(Arc::clone(&serv)),
+        )
+        .layer(compression_layer);
 
-
+    // run our app with hyper, listening globally on port 3000
+    let listener =
+        tokio::net::TcpListener::bind(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789))
+            .await
+            .unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
-
-struct MainHandler {
-    drive_dir: PathBuf,
+async fn get_all_galleries(State(serv): State<Arc<MainService>>) -> Json<Vec<Gallery>> {
+    Json(serv.galleries.values().cloned().collect())
 }
-fn read_file_to_string(file_path: &str) -> std::io::Result<String> {
-    let file = File::open(file_path)?;
-    let mut buf_reader = BufReader::new(file);
-    let mut contents = String::new();
-    buf_reader.read_to_string(&mut contents)?;
+async fn get_preview(
+    axum::extract::Path((id, level)): axum::extract::Path<(u32, u8)>,
+    State(serv): State<Arc<MainService>>,
+) -> impl IntoResponse{
+    let media= serv.medias.get(&id).expect("media !exists");
 
-    Ok(contents)
-}
+    let image = get_media_preview(&level, &media.path).expect("get preview err");
+    (axum::response::AppendHeaders([(header::CONTENT_TYPE, "image/webp")]), image)
 
+/* 
+    let body = Cursor::new(image);
 
-impl Handler for MainHandler {
-    fn handle(&self, req: &mut Request) -> IronResult<Response> {
-        let mut fs_path = self.drive_dir.clone();
-        let path_prefix = req
-            .url
-            .path()
-            .into_iter()
-            .filter(|s| !s.is_empty())
-            .map(|s| {
-                percent_decode(s.as_bytes())
-                    .decode_utf8()
-                    .map(|path| PathBuf::from(&*path))
-                    .map_err(|_err| {
-                        IronError::new(
-                            StringError(format!("invalid path: {}", s)),
-                            status::BadRequest,
-                        )
-                    })
-            })
-            .collect::<Result<Vec<PathBuf>, _>>()?
-            .into_iter()
-            .collect::<PathBuf>();
-        fs_path.push(&path_prefix);
-        let fs_path = fs_path.parse_dot().unwrap();
-        let path_metadata = match fs::metadata(&fs_path) {
-            Ok(value) => value,
-            Err(err) => {
-                let status = match err.kind() {
-                    io::ErrorKind::PermissionDenied => status::Forbidden,
-                    io::ErrorKind::NotFound => status::NotFound,
-                    _ => status::InternalServerError,
-                };
-                return Err(IronError::new(err, status));
-            }
-        };
-        //所有请求参数
-        let params: HashMap<String, String> =
-            url::form_urlencoded::parse(req.url.query().unwrap_or("").as_bytes())
-                .into_owned()
-                .collect();
-        //预览级别 0=webp压图 1=512x缩图 2=256x缩图 3=128缩图 4=64缩图 5=32缩图
-        if let Some(pre_lvl) = params.get("preview") {
-            let tbnl = get_media_preview(&pre_lvl.parse::<u8>().unwrap_or(0), &fs_path).expect("");
-            let mut response = Response::with((status::Ok, tbnl));
-            response.headers.set(ContentType(Mime(
-                TopLevel::Image,
-                SubLevel::from_str("webp").unwrap(),
-                vec![],
-            )));
-            return Ok(response);
-        }
-        if let Some(meta) = params.get("meta") {
-            let meta = meta.as_str();
-            let response = match meta {
-                //元数据：文件尺寸
-                "size" => Response::with((
-                    status::Ok,
-                    fs::metadata(&fs_path).unwrap().len().to_string(),
-                )),
-                //元数据：exif信息
-                "exif" => match get_image_exif(&fs_path) {
-                    Ok(o) => Response::with((status::Ok, serde_json::to_string(&o).unwrap())),
-                    Err(_e) => Response::with(status::Ok),
-                },
-                &_ => Response::with(status::BadRequest),
-            };
-            return Ok(response);
-        }
+    let response: Response<Body> = Response::builder()
+        .header(header::CONTENT_TYPE, "image/webp")
+        .body(Body::from_stream(tokio_util::io::ReaderStream::new(body)))
+        .unwrap();
+    Ok((StatusCode::OK, response)) */
+} 
+async fn get_media( 
+    headers: HeaderMap,
+     axum::extract::Path(id): axum::extract::Path<u32>,
+     State(serv): State<Arc<MainService>>)-> impl IntoResponse {
+    let req = Request::builder().body(Body::empty()).unwrap();
+    let media = serv.medias.get(&id).expect("media !exists");
+ 
+    handle_file(media,headers.get(RANGE).cloned()).await
 
-        //发送目录/文件
-        if path_metadata.is_dir() {
-            self.list_directory_all_files( &fs_path)
-        } else {
-            self.send_file(req, &fs_path)
-        }
-    }
-}
-
-#[derive(Serialize)]
-struct FileItem {
-    name: String,
-    time: u64,
-    size: u64,
-}
-impl MainHandler {
-    //发送目录
-    fn list_directory_all_files(&self, fs_path: &Path) -> IronResult<Response> {
-
-        let mut resp = Response::with(status::Ok);
-        let fs_path = fs_path.to_owned();
-        let read_dir = fs::read_dir(&fs_path).map_err(error_io2iron)?;
-        let mut entries = Vec::new();
-        for entry_result in read_dir {
-            let entry = entry_result.map_err(error_io2iron)?;
-
-            let mut file_name = entry.file_name().into_string().unwrap();
-            //如果是目录 文件名最后加个斜杠
-            if entry.file_type().unwrap().is_dir() {
-                file_name.push('/');
-            }
-            entries.push(file_name);
-        }
-        //发送目录下所有文件名
-        resp.set_mut(serde_json::to_string(&entries).unwrap());
-
-        Ok(resp)
-    }
+}  
+ 
+/* impl MainHandler { 
 
     fn send_file<P: AsRef<Path>>(&self, req: &Request, path: P) -> IronResult<Response> {
         use filetime::FileTime;
@@ -351,3 +324,4 @@ impl MainHandler {
         Ok(resp)
     }
 }
+ */

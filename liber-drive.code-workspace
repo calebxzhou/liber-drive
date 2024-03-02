@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "front"
+		},
+		{
+			"path": "front-ng"
 		}
 	],
 	"settings": {}

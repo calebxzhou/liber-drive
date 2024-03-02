@@ -2,17 +2,18 @@
 mod test {
     use std::fs::File;
     use std::io::BufReader;
+    use std::path::Path;
 
+    use log::info;
+
+    use crate::media_scanner::{scan_all_galleries, scan_medias};
     #[test]
     fn it_works() {
-        let file = File::open("/Users/calebzhou/Pictures/240215hld/_1021890.jpg").unwrap();
-        let mut bufreader = BufReader::new(&file);
-
-        let exifreader = exif::Reader::new();
-        let exif = exifreader.read_from_container(&mut bufreader).unwrap();
-
-        for field in exif.fields() {
-            println!("Tag: {} (IFD: {}) - Value: {}", field.tag, field.ifd_num, field.display_value().with_unit(&exif));
-        }
+        env_logger::init();
+        let path = Path::new("D:/相机").to_path_buf();
+        let medias = scan_medias(&path);
+        info!("{} medias", medias.len());
+        let galleries = scan_all_galleries(&path);
+        info!("{} galleries", galleries.len());
     }
 }
