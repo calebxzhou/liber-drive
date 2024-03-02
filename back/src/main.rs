@@ -12,11 +12,14 @@ use std::sync::Arc;
 
 use axum::body::Body;
 use axum::body::Bytes;
+use axum::error_handling::HandleErrorLayer;
 use axum::extract::State;
 use axum::http::header;
+use axum::http::header::ACCESS_CONTROL_MAX_AGE;
 use axum::http::header::CACHE_CONTROL;
 use axum::http::header::CONTENT_TYPE;
 use axum::http::header::ETAG;
+use axum::http::header::IF_MODIFIED_SINCE;
 use axum::http::header::LAST_MODIFIED;
 use axum::http::header::RANGE;
 use axum::http::Extensions;
@@ -27,11 +30,11 @@ use axum::http::Response;
 use axum::http::StatusCode;
 use axum::Json;
 use axum::Router;
-use axum::{response::IntoResponse, routing::get};
+use axum::{response::IntoResponse, routing::get}; 
+use chrono::DateTime;
 use chrono::Local;
 use clap::crate_version;
-use env_logger::Builder;
-use filetime::FileTime;
+use env_logger::Builder; 
 use gallery::Gallery;
 
 use lazy_static::lazy_static;
@@ -40,6 +43,9 @@ use log::LevelFilter;
 use media_processing::get_media_preview;
 use media_sender::handle_file;
 use mime_guess as mime_types;
+use tower::ServiceBuilder;
+use util::convert_http_date_to_u64;
+use util::convert_u64_to_http_date; 
 
 
 use crate::main_service::MainService; 
@@ -107,8 +113,7 @@ async fn main() {
 
         // Otherwise, compress the response
         true
-    });
-
+    }); 
     let serv = MainService::new(&drive_dir);
     let serv = Arc::new(serv);
     let app = Router::new()
@@ -137,31 +142,41 @@ async fn get_all_galleries(State(serv): State<Arc<MainService>>) -> Json<Vec<Gal
     Json(serv.galleries.values().cloned().collect())
 }
 async fn get_preview(
+    headers: HeaderMap,
     axum::extract::Path((id, level)): axum::extract::Path<(u32, u8)>,
     State(serv): State<Arc<MainService>>,
 ) -> impl IntoResponse{
     let media= serv.medias.get(&id).expect("media !exists");
-
+    let modified = media.time;
     let image = get_media_preview(&level, &media.path).expect("get preview err");
-    (axum::response::AppendHeaders([(header::CONTENT_TYPE, "image/webp")]), image)
-
-/* 
-    let body = Cursor::new(image);
-
-    let response: Response<Body> = Response::builder()
-        .header(header::CONTENT_TYPE, "image/webp")
-        .body(Body::from_stream(tokio_util::io::ReaderStream::new(body)))
-        .unwrap();
-    Ok((StatusCode::OK, response)) */
+    let etag = etag::EntityTag::weak(format!(
+        "{0:x}-{1:x}",
+        media.size,
+        media.time
+    ).as_str());
+    let resp = Response::builder()
+    .header(CACHE_CONTROL, "public, max-age=604800")
+    .header(LAST_MODIFIED, convert_u64_to_http_date(modified).unwrap())
+    .header(ETAG, etag.to_string())
+    .header(CONTENT_TYPE,"image/webp")
+    ;
+    if let Some(if_mod)  = headers.get(IF_MODIFIED_SINCE){
+        if modified <= convert_http_date_to_u64(if_mod).unwrap(){
+            return Response::builder().status(304).body(Body::empty()).unwrap();
+        }
+    }
+    resp
+    .body(Body::from(image))
+    .unwrap()
+ 
 } 
 async fn get_media( 
     headers: HeaderMap,
      axum::extract::Path(id): axum::extract::Path<u32>,
      State(serv): State<Arc<MainService>>)-> impl IntoResponse {
-    let req = Request::builder().body(Body::empty()).unwrap();
     let media = serv.medias.get(&id).expect("media !exists");
  
-    handle_file(media,headers.get(RANGE).cloned()).await
+    handle_file(media,&headers).await
 
 }  
  

@@ -10,7 +10,7 @@ pub struct MediaItem {
     #[serde(skip_serializing)]
     pub path: PathBuf,
     name: String,
-    time: u64,
+    pub time: u64,
     pub size: u64,
     exif: Option<ImageExif>,
 }

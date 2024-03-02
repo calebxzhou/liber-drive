@@ -1,7 +1,10 @@
 use axum::{
     body::Body,
     http::{
-        header::{self, ACCEPT_RANGES, CONTENT_LENGTH, CONTENT_TYPE},
+        header::{
+            self, ACCEPT_RANGES, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, ETAG,
+            IF_MODIFIED_SINCE, LAST_MODIFIED,
+        },
         HeaderMap, Response, StatusCode,
     },
     response::IntoResponse,
@@ -13,7 +16,10 @@ use tokio::{
 };
 use tokio_util::io::ReaderStream;
 
-use crate::media_item::MediaItem;
+use crate::{
+    media_item::MediaItem,
+    util::{convert_http_date_to_u64, convert_u64_to_http_date},
+};
 
 // A struct to hold the range header value
 #[derive(Debug)]
@@ -41,11 +47,19 @@ fn parse_range(range: &str) -> Option<Range> {
 }
 
 // A function to handle the request
-pub async fn handle_file(
-    media: &MediaItem,
-    range: Option<header::HeaderValue>,
-) -> impl IntoResponse {
-    let resp = Response::builder();
+pub async fn handle_file(media: &MediaItem, headers: &HeaderMap) -> impl IntoResponse {
+    let range = headers.get(header::RANGE);
+    let modified = media.time;
+    let etag = etag::EntityTag::weak(format!("{0:x}-{1:x}", media.size, media.time).as_str());
+    let resp = Response::builder()
+        .header(CACHE_CONTROL, "public, max-age=604800")
+        .header(LAST_MODIFIED, convert_u64_to_http_date(modified).unwrap())
+        .header(ETAG, etag.to_string());
+    if let Some(if_mod) = headers.get(IF_MODIFIED_SINCE) {
+        if modified <= convert_http_date_to_u64(if_mod).unwrap() {
+            return Response::builder().status(304).body(Body::empty()).unwrap();
+        }
+    }
     let path = &media.path;
     // Try to open the file
     let mut file = File::open(path).await.unwrap();
@@ -60,21 +74,19 @@ pub async fn handle_file(
         None
     };
 
-    let resp = resp
-        .header(ACCEPT_RANGES, "bytes")
-        .header(
-            CONTENT_TYPE,
-            if media.is_image() {
-                "image/jpeg"
-            } else if media.is_video() {
-                "video/mp4"
-            } else {
-                return Response::builder()
-                    .status(400)
-                    .body(Body::from("not implemented file type"))
-                    .unwrap();
-            },
-        );
+    let resp = resp.header(ACCEPT_RANGES, "bytes").header(
+        CONTENT_TYPE,
+        if media.is_image() {
+            "image/jpeg"
+        } else if media.is_video() {
+            "video/mp4"
+        } else {
+            return Response::builder()
+                .status(400)
+                .body(Body::from("not implemented file type"))
+                .unwrap();
+        },
+    );
 
     // If the range is valid, return a partial content response
     if let Some(range) = range {
@@ -103,25 +115,23 @@ pub async fn handle_file(
 
         // Set the content range and content length headers
         // Return a partial content response with the stream
-        resp
-        .status(206)
-        .header(
-            header::CONTENT_RANGE,
-            format!("bytes {}-{}/{}", range.start, end, file_size),
-        )
-        .header(header::CONTENT_LENGTH, len.to_string())
-        .body(Body::from_stream(stream))
-        .unwrap()
+        resp.status(206)
+            .header(
+                header::CONTENT_RANGE,
+                format!("bytes {}-{}/{}", range.start, end, file_size),
+            )
+            .header(header::CONTENT_LENGTH, len.to_string())
+            .body(Body::from_stream(stream))
+            .unwrap()
     } else {
         //无range 返回全文件
         let stream = ReaderStream::new(file);
-        resp
-        .header(
+        resp.header(
             header::CONTENT_RANGE,
             format!("bytes {}-{}/{}", 0, file_size, file_size),
         )
         .header(header::CONTENT_LENGTH, file_size.to_string())
-            .body(Body::from_stream(stream))
-            .unwrap()
+        .body(Body::from_stream(stream))
+        .unwrap()
     }
 }
