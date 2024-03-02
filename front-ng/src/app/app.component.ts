@@ -3,13 +3,13 @@ import { NavbarComponent } from './navbar/navbar.component';
 import { FileGridComponent } from './file-grid/file-grid.component';
 
 import { Router, RouterModule } from '@angular/router';
-import { GalleryComponent } from './gallery/gallery.component';
+import { GalleriesComponent } from './media/galleries.component';
 @Component({
     selector: 'app-root',
     templateUrl: './app.component.html',
     imports: [
         
-        RouterModule,GalleryComponent
+        RouterModule,GalleriesComponent
       ],
     standalone: true,
 })

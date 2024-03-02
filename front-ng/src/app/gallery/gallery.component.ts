@@ -1,38 +1,40 @@
-import { Component, OnInit } from "@angular/core";
-import { GalleryService } from "./gallery.service";
-import { Gallery } from './gallery';
+import { Component, Input, OnInit } from "@angular/core";
+import { MediaService } from "../media/media.service";
+import { Gallery, MediaItem } from "../media/media";
 import { CommonModule } from "@angular/common";
-import { toReadableSize } from "../util";
 
 @Component({
-  selector: "gallery",
-  templateUrl: "./gallery.component.html",
-  imports: [CommonModule],
+  selector: "lg-gallery",
   standalone: true,
+  imports: [CommonModule],
+  templateUrl: "./gallery.component.html",
+  styles: `
+  .border {
+      border: 5px solid gray;
+      border-radius: 20px;
+    }
+    .rounded-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 20px;
+    }
+    `,
 })
 export class GalleryComponent implements OnInit {
-  galleries: Gallery[] = [];
+  @Input() gallery!: Gallery;
+  thumbnailUrls: string[] = [];
+  constructor(private mediaService: MediaService) {}
 
-  constructor(private galleryService: GalleryService) {}
-
-  ngOnInit() {
-    this.getGalleries();
-  }
-  getSize(gallery:Gallery):string{
-    return toReadableSize(gallery.size);
-  }
-  getGalleries(): void {
-    this.galleryService
-      .getGalleries()
-      .subscribe(
-        (galleries) =>
-          
-            this.galleries = galleries
-            .filter(g => g.size>0)
-            .sort((g1, g2) => g1.name.localeCompare(g2.name))
-            .reverse()
-            
-      );
-
+  ngOnInit(): void { 
+    const values = new Map(Object.entries(this.gallery.medias)).values();
+    const mediaArray = Array.from(values).map(media=>this.mediaService.getThumbnailUrl(media.id));
+    const thirdCount = Math.floor(mediaArray.length / 3);
+    this.thumbnailUrls = [
+      mediaArray[0], // First image
+      mediaArray[thirdCount], // 1/3 count image
+      mediaArray[2 * thirdCount], // 2/3 count image
+      mediaArray[mediaArray.length - 1] // Last image
+    ];
   }
 }

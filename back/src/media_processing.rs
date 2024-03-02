@@ -2,11 +2,13 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, Cursor, Read};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 use exif::{In, Tag};
 use image::imageops::FilterType;
+use image::{DynamicImage, ImageOutputFormat};
 use lazy_static::lazy_static;
 use serde::Serialize;
 
@@ -15,7 +17,7 @@ lazy_static! {
     static ref PREVIEW_PIXELS : Vec<u32> = [512,256,128,64,32].iter().cloned().collect();
     static ref PREVIEW_LEVEL_PIXELS :HashMap<u8,u32> = [(1,512),(2,256),(3,128),(4,64),(5,32)].iter().cloned().collect();
 }
-#[derive(Serialize,Clone)]
+#[derive(Serialize, Clone)]
 pub struct ImageExif {
     //相机
     make: String,
@@ -65,6 +67,7 @@ impl ImageExif {
 }
 //创建媒体文件预览（缩略图）//预览级别 0=webp压图 1=512x缩图 2=256x缩图 3=128缩图 4=64缩图 5=32缩图
 pub fn get_media_preview(level: &u8, media_path: &PathBuf) -> Result<Vec<u8>, Box<dyn Error>> {
+    let height = PREVIEW_LEVEL_PIXELS.get(level);
     let file_size = fs::metadata(media_path)?.len();
     let file_name = media_path
         .file_name()
@@ -84,14 +87,48 @@ pub fn get_media_preview(level: &u8, media_path: &PathBuf) -> Result<Vec<u8>, Bo
     }
     //缓存不存在
     else {
-        //是视频 截取第一帧
         if file_name.ends_with(".mp4") || file_name.ends_with(".mov") {
-            //TODO 以后弄
-            Ok(vec![])
+            //是视频 截取第一帧
+            let mut ffmpeg_output = Command::new("ffmpeg")
+                .arg("-i") // input file
+                .arg(media_path.display().to_string()) // replace with your file
+                .arg("-vframes") // number of video frames to output
+                .arg("1") // we only want the first frame
+                .arg("-f") // force format
+                .arg("image2pipe") // pipe image data to stdout
+                .arg("-") // output to stdout
+                .stdout(Stdio::piped()) // capture stdout
+                .spawn()
+                .expect("Failed to execute FFmpeg command")
+                .stdout
+                .expect("Failed to capture stdout");
+
+            let mut buffer = Vec::new();
+            ffmpeg_output
+                .read_to_end(&mut buffer)
+                .expect("Failed to read FFmpeg output");
+
+            let cursor = Cursor::new(buffer);
+
+            let img = image::io::Reader::new(cursor)
+                .with_guessed_format()
+                .expect("Failed to guess image format")
+                .decode()
+                .expect("Failed to decode image");
+            let width = img.width();
+            let webp_mem = if let Some(height) = height {
+                let image = img.resize(width, *height, FilterType::Nearest);
+                webp::Encoder::from_image(&image)?.encode(80f32)
+            } else {
+                webp::Encoder::from_image(&img)?.encode(40f32)
+            };
+            fs::write(&cache_path, &*webp_mem)?;
+            Ok(webp_mem.to_vec())
         } else if file_name.ends_with(".jpg") || file_name.ends_with(".png") {
+            //是图片
             let image = image::open(media_path)?;
             let width = image.width();
-            let height = PREVIEW_LEVEL_PIXELS.get(level);
+            
             //缩略图
             let webp_mem = if let Some(height) = height {
                 let image = image.resize(width, *height, FilterType::Nearest);
@@ -106,8 +143,12 @@ pub fn get_media_preview(level: &u8, media_path: &PathBuf) -> Result<Vec<u8>, Bo
         }
     }
 }
-fn get_exif_field(exif: &exif::Exif, tag: Tag) -> String{
-    ImageExif::get_field_value(exif, tag).replace("\"", "").replace(",", "").trim().to_string()
+fn get_exif_field(exif: &exif::Exif, tag: Tag) -> String {
+    ImageExif::get_field_value(exif, tag)
+        .replace("\"", "")
+        .replace(",", "")
+        .trim()
+        .to_string()
 }
 pub fn get_image_exif(media_path: &PathBuf) -> Result<Option<ImageExif>, Box<dyn Error>> {
     let file = File::open(media_path)?;
@@ -116,7 +157,7 @@ pub fn get_image_exif(media_path: &PathBuf) -> Result<Option<ImageExif>, Box<dyn
     let exifreader = exif::Reader::new();
     let exif = exifreader.read_from_container(&mut bufreader)?;
     let make = get_exif_field(&exif, Tag::Make);
-    if make.is_empty(){
+    if make.is_empty() {
         return Ok(None);
     }
     let model = get_exif_field(&exif, Tag::Model);

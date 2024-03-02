@@ -27,7 +27,7 @@ use axum::http::HeaderMap;
 use axum::http::HeaderValue;
 use axum::http::Request;
 use axum::http::Response;
-use axum::http::StatusCode;
+
 use axum::Json;
 use axum::Router;
 use axum::{response::IntoResponse, routing::get}; 
@@ -154,7 +154,15 @@ async fn get_preview(
 ) -> impl IntoResponse{
     let media= serv.medias.get(&id).expect("media !exists");
     let modified = media.time;
-    let image = get_media_preview(&level, &media.path).expect("get preview err");
+
+    
+    let image = match get_media_preview(&level, &media.path) {
+        Ok(o) => {o},
+        Err(e) => {
+            return Response::builder().status(500).body(Body::from(format!("Preview Err! {}, {}",&media.path.display().to_string(),e))).unwrap();
+        },
+    };
+
     let etag = etag::EntityTag::weak(format!(
         "{0:x}-{1:x}",
         media.size,
