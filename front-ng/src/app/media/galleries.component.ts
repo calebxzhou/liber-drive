@@ -1,6 +1,6 @@
 import {Component, HostListener, OnInit} from "@angular/core";
 import {MediaService} from "./media.service";
-import {Gallery} from './media';
+import {Gallery, MediaItem} from './media';
 import {CommonModule} from "@angular/common";
 import {toReadableSize} from "../util";
 import {MatGridListModule} from '@angular/material/grid-list';
@@ -34,12 +34,15 @@ export class GalleriesComponent implements OnInit {
         this.galleryService
             .getGalleries()
             .subscribe(
-                (galleries) =>
-
+                (galleries) =>{
                     this.galleries = galleries
                         .filter(g => g.size > 0)
                         .sort((g1, g2) => g1.name.localeCompare(g2.name))
-                        .reverse()
+                        .reverse();
+                      this.galleries = [this.getGalleryForAllMedias()].concat(this.galleries);
+                      }
+
+
             );
 
     }
@@ -52,23 +55,15 @@ export class GalleriesComponent implements OnInit {
           };
           
           // Loop through the Gallery array and accumulate the size and medias
-          for (let gallery of Gallery[]) {
+          for (let gallery of this.galleries) {
             // Add the size of each gallery to the total size
             allGalleries.size += gallery.size;
           
             // Loop through the medias map of each gallery
             for (let [key, value] of gallery.medias) {
-              // Check if the key already exists in the aggregated medias map
-              if (allGalleries.medias.has(key)) {
-                // If yes, update the value with some logic (e.g. merge, overwrite, etc.)
-                // This depends on how you want to handle duplicate keys
-                let existingValue = allGalleries.medias.get(key);
-                let newValue = mergeMediaItems(existingValue, value); // Define this function as per your logic
-                allGalleries.medias.set(key, newValue);
-              } else {
-                // If no, simply add the key-value pair to the aggregated medias map
+             
                 allGalleries.medias.set(key, value);
-              }
+              
             }
           }
 
