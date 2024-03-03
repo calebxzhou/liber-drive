@@ -1,4 +1,17 @@
-<div class="border">
-    <img *ngFor="let img of thumbnailUrls" [src]="img" class="rounded-img">
+
+<div class="mr-2 mb-2 cursor-pointer">
+
+  <div class="truncate rounded-3xl overflow-hidden  hover:bg-gray-200 grid grid-cols-2 grid-rows-2" >
+    <img [src]="img" *ngFor="let img of thumbnailUrls" class="w-16 h-16 object-cover object-center">
   </div>
-  {{ gallery.name }}
+
+  <span class="block w-fit text-sm">
+    {{ gallery.name }}
+  </span>
+  <span class="block text-gray-500 text-xs">
+  {{amount}}x<span class=" text-gray-300 text-xs float-end">
+  {{size}}
+     </span>
+  </span>
+ 
+</div>

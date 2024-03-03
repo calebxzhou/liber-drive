@@ -29,9 +29,6 @@ export class GalleriesComponent implements OnInit {
         this.getGalleries();
     }
 
-    getSize(gallery: Gallery): string {
-        return toReadableSize(gallery.size);
-    }
 
     getGalleries(): void {
         this.galleryService
@@ -45,5 +42,36 @@ export class GalleriesComponent implements OnInit {
                         .reverse()
             );
 
+    }
+    getGalleryForAllMedias(): Gallery{
+        let allGalleries: Gallery = {
+            id: -1,
+            name: "all galleries",
+            size: 0,
+            medias: new Map<number, MediaItem>()
+          };
+          
+          // Loop through the Gallery array and accumulate the size and medias
+          for (let gallery of Gallery[]) {
+            // Add the size of each gallery to the total size
+            allGalleries.size += gallery.size;
+          
+            // Loop through the medias map of each gallery
+            for (let [key, value] of gallery.medias) {
+              // Check if the key already exists in the aggregated medias map
+              if (allGalleries.medias.has(key)) {
+                // If yes, update the value with some logic (e.g. merge, overwrite, etc.)
+                // This depends on how you want to handle duplicate keys
+                let existingValue = allGalleries.medias.get(key);
+                let newValue = mergeMediaItems(existingValue, value); // Define this function as per your logic
+                allGalleries.medias.set(key, newValue);
+              } else {
+                // If no, simply add the key-value pair to the aggregated medias map
+                allGalleries.medias.set(key, value);
+              }
+            }
+          }
+
+          return allGalleries;
     }
 }
