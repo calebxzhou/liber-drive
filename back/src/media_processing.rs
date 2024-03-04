@@ -7,8 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use exif::{In, Tag};
-use image::imageops::FilterType;
-use image::{DynamicImage, ImageOutputFormat};
+use image::imageops::FilterType; 
 use lazy_static::lazy_static;
 use serde::Serialize;
 

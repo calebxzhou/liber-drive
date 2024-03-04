@@ -5,10 +5,7 @@
 		},
 		{
 			"path": "back"
-		},
-		{
-			"path": "front"
-		},
+		}, 
 		{
 			"path": "front-ng"
 		}

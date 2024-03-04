@@ -6,8 +6,7 @@ use std::{
     time::UNIX_EPOCH,
 };
 
-use log::info;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use log::info; 
 use walkdir::WalkDir;
 
 use crate::gallery::{self, Gallery};

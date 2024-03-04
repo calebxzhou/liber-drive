@@ -2,17 +2,17 @@ use axum::{
     body::Body,
     http::{
         header::{
-            self, ACCEPT_RANGES, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, ETAG,
+            self, ACCEPT_RANGES, CACHE_CONTROL,  CONTENT_TYPE, ETAG,
             IF_MODIFIED_SINCE, LAST_MODIFIED,
         },
         HeaderMap, Response, StatusCode,
     },
     response::IntoResponse,
 };
-use std::{fs, io::SeekFrom, net::SocketAddr, os::windows::fs::MetadataExt, path::PathBuf};
+use std::{fs, io::SeekFrom, };
 use tokio::{
     fs::File,
-    io::{AsyncReadExt, AsyncSeekExt},
+    io::AsyncSeekExt,
 };
 use tokio_util::io::ReaderStream;
 
