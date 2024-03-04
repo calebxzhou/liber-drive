@@ -1,17 +1,39 @@
+<style>
+  .img-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    grid-template-rows: repeat(auto-fit, minmax(128px, 1fr));
+    grid-gap: 0.5px;
+  }
+</style>
+<mat-toolbar>
+  <button
+    (click)="back()"
+    mat-icon-button
+    class="example-icon"
+    aria-label="Example icon-button with menu icon"
+  >
+    <mat-icon
+      ><span class="material-symbols-outlined"> arrow_back </span></mat-icon
+    >
+  </button>
+  <span>{{ title }}</span>
+</mat-toolbar>
+<!-- 
+<div *ngFor="let day of getDays(gallery.medias)">
+  <h2>{{ day | date : "yyyy.MM.dd" }}</h2> -->
+<div class="img-grid">
+  @for (media of gallery.medias; track media; let i = $index) {
+  <img
+    class="w-36 h-32 object-cover object-center"
+    src="{{ imgPreview(media) }}"
+    (click)="openViewer(i, media)"
+  />
+  <span *ngIf="isVideo(media)" class="icon"><span class="material-symbols-outlined">play_circle</span></span>
 
-<div class="mr-2 mb-2 cursor-pointer">
-
-  <div class="truncate rounded-3xl overflow-hidden  hover:bg-gray-200 grid grid-cols-2 grid-rows-2" >
-    <img [src]="img" *ngFor="let img of thumbnailUrls" class="w-16 h-16 object-cover object-center">
-  </div>
-
-  <span class="block w-fit text-sm">
-    {{ gallery.name }}
-  </span>
-  <span class="block text-gray-500 text-xs">
-  {{amount}}x<span class=" text-gray-300 text-xs float-end">
-  {{size}}
-     </span>
-  </span>
- 
+  }
 </div>
+<div *ngIf="displayViewer">
+    <lg-media-viewer [medias]="medias" [index]="index" (mediaViewerToggled)="displayViewer = $event"></lg-media-viewer>
+</div>
+<!-- </div> -->

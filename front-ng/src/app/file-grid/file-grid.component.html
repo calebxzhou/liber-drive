@@ -1,8 +1,0 @@
-<div class="flex flex-wrap justify-start pt-2">
-    <div *ngFor="let item of fileItems">
-        <!-- 目录 -->
-        <dir-item *ngIf="item.isDir" [fileItem]="item"></dir-item>
-        <!-- 图片 -->
-        <img-item *ngIf="item.isImage" [fileItem]="item"></img-item>
-    </div>
-</div>

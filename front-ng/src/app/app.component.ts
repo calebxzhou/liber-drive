@@ -1,15 +1,13 @@
-import {Component,Input, ViewContainerRef} from '@angular/core';
-import { NavbarComponent } from './navbar/navbar.component';
-import { FileGridComponent } from './file-grid/file-grid.component';
+import {Component,Input, ViewContainerRef} from '@angular/core'; 
 
-import { Router, RouterModule } from '@angular/router';
-import { GalleriesComponent } from './media/galleries.component';
+import { Router, RouterLink, RouterLinkActive, RouterModule, RouterOutlet } from '@angular/router';
+import { GalleryGridComponent } from './gallery-grid/gallery-grid.component';
 @Component({
     selector: 'app-root',
     templateUrl: './app.component.html',
     imports: [
-        
-        RouterModule,GalleriesComponent
+
+        RouterModule,GalleryGridComponent, RouterOutlet, RouterLink, RouterLinkActive
       ],
     standalone: true,
 })

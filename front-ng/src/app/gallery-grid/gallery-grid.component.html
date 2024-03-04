@@ -10,7 +10,7 @@
   
   <div *ngFor="let gallery of galleries">
    
-      <lg-gallery [gallery]="gallery"></lg-gallery>
+    <a routerLink="/gallery/{{gallery.name}}"> <lg-gallery [gallery]="gallery"></lg-gallery></a>
         
   </div>
 </div>

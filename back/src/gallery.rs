@@ -1,18 +1,17 @@
-use core::fmt;
-use std::collections::HashMap;
+use core::fmt; 
 use serde::{Deserialize, Serialize};
 
 use crate::{media_item::MediaItem, util::human_readable_size};
 
 #[derive(Serialize,Clone)]
 pub struct Gallery{
-    id: u32,
+    pub id: u32,
     name: String,
     size: u64,
-    pub medias: HashMap<u32,MediaItem>
+    pub medias: Vec<MediaItem>
 }
 impl Gallery {
-    pub fn new(id: u32, name: String, size: u64, medias: HashMap<u32, MediaItem>) -> Self {
+    pub fn new(id: u32, name: String, size: u64, medias: Vec<MediaItem>) -> Self {
         Self { id, name, size, medias }
     }
 }

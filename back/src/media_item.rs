@@ -6,13 +6,13 @@ use crate::media_processing::ImageExif;
 
 #[derive(Serialize, Clone)]
 pub struct MediaItem {
-    id: u32,
+    pub id: u32,
     #[serde(skip_serializing)]
     pub path: PathBuf,
     name: String,
     pub time: u64,
-    pub size: u64,
-    exif: Option<ImageExif>,
+    pub size: u64, 
+    pub exif: Option<ImageExif>,
 }
 impl MediaItem {
     pub fn new(
@@ -22,7 +22,7 @@ impl MediaItem {
         time: u64,
         size: u64,
         exif: Option<ImageExif>,
-    ) -> MediaItem {
+    ) -> MediaItem { 
         Self {
             id,
             path,

@@ -2,12 +2,11 @@ export interface Gallery {
     id: number;
     name: string;
     size: number;
-    medias: Map<number, MediaItem>;
+    medias: MediaItem[];
 }
 
 export  interface MediaItem {
     id: number;
-    path: string; // PathBuf in Rust can be represented as string in TypeScript
     name: string;
     time: number;
     size: number;

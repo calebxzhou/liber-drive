@@ -15,8 +15,8 @@ use crate::{
     media_item::{IdName, MediaItem},
     media_processing::get_image_exif,
 };
-pub fn scan_all_galleries(drive_dir: &PathBuf) -> HashMap<u32, Gallery> {
-    let mut all_galleries = HashMap::new();
+pub fn scan_all_galleries(drive_dir: &PathBuf) -> Vec<Gallery> {
+    let mut all_galleries = Vec::new();
 
     let mut media_id = 0;
     let mut gallery_id = 0;
@@ -28,7 +28,7 @@ pub fn scan_all_galleries(drive_dir: &PathBuf) -> HashMap<u32, Gallery> {
         }
         let gallery_name = gallery.file_name().into_string().unwrap();
         let mut gallery_size = 0;
-        let mut gallery_medias = HashMap::new();
+        let mut gallery_medias = Vec::new();
         for entry in WalkDir::new(gallery.path()) {
             let media = entry.unwrap();
             //跳过目录
@@ -43,7 +43,7 @@ pub fn scan_all_galleries(drive_dir: &PathBuf) -> HashMap<u32, Gallery> {
                 let name = media.file_name().to_string_lossy().into_owned();
                 let meta = fs::metadata(&path).unwrap();
                 let size = meta.len();
-                let time = meta
+                let   time = meta
                     .created()
                     .unwrap()
                     .duration_since(UNIX_EPOCH)
@@ -59,14 +59,14 @@ pub fn scan_all_galleries(drive_dir: &PathBuf) -> HashMap<u32, Gallery> {
                     None
                 };
                 let info = MediaItem::new(media_id, path, name, time, size, exif);
-                gallery_medias.insert(media_id, info);
+                gallery_medias.push( info);
                 gallery_size += size;
                 media_id += 1;
             }
         }
         let gallery = Gallery::new(gallery_id, gallery_name, gallery_size, gallery_medias);
         info!("{}", gallery);
-        all_galleries.insert(gallery_id, gallery);
+        all_galleries.push( gallery);
         gallery_id += 1;
     }
     all_galleries

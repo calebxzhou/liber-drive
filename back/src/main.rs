@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::Write;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -28,6 +29,7 @@ use axum::http::HeaderValue;
 use axum::http::Request;
 use axum::http::Response;
 
+use axum::http::StatusCode;
 use axum::Json;
 use axum::Router;
 use axum::{response::IntoResponse, routing::get}; 
@@ -41,8 +43,10 @@ use lazy_static::lazy_static;
 use log::info;
 use log::LevelFilter;
 use media_processing::get_media_preview;
+use media_processing::ImageExif;
 use media_sender::handle_file;
 use mime_guess as mime_types;
+use serde_json::ser;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use util::convert_http_date_to_u64;
@@ -130,6 +134,10 @@ async fn main() {
             "/media/:id",
             get(get_media).with_state(Arc::clone(&serv)),
         )
+        .route(
+            "/exif/:id",
+            get(get_exif).with_state(Arc::clone(&serv)),
+        )
         .layer(compression_layer)
     .layer(CorsLayer::new()
         .allow_origin("*".parse::<HeaderValue>().unwrap())
@@ -145,7 +153,22 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 async fn get_all_galleries(State(serv): State<Arc<MainService>>) -> Json<Vec<Gallery>> {
-    Json(serv.galleries.values().cloned().collect())
+  
+    Json(serv.galleries.deref().to_vec())
+}
+async fn get_exif(
+    axum::extract::Path(id): axum::extract::Path<u32>,
+    State(serv): State<Arc<MainService>>
+) -> impl IntoResponse {
+    match serv.medias.get(&id) {
+        Some(media) => {
+            match &media.exif {
+                Some(exif) => Json(exif.clone()).into_response(),
+                None => StatusCode::NOT_FOUND.into_response(),
+            }
+        },
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
 }
 async fn get_preview(
     headers: HeaderMap,

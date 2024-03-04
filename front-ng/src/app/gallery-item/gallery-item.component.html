@@ -1,0 +1,28 @@
+<style>
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    grid-gap: 0px;
+  }
+  span { 
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;font-size-adjust: 0.5;}
+</style>
+<div class="p-2 mr-2 mb-2 cursor-pointer">
+
+  <div class="gallery truncate rounded-3xl overflow-hidden  hover:bg-gray-200 grid grid-cols-2 grid-rows-2" >
+    <img [src]="img" *ngFor="let img of thumbnailUrls" class="w-20 h-14 object-cover object-center">
+  </div>
+
+  <span class="block w-fit text-sm">
+    {{ gallery.name }}
+  </span>
+  <span class="block text-gray-500 text-xs">
+  {{amount}}x<span class=" text-gray-300 text-xs float-end">
+  {{size}}
+     </span>
+  </span>
+ 
+</div>
