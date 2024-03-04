@@ -81,7 +81,7 @@ fn logger_init() {
 }
 //载入工作目录
 fn load_drive_dir() -> PathBuf {
-    let path = std::path::Path::new("drive_dir.txt");
+    let path = std::path::Path::new("./drive_dir.txt");
     let mut file = if path.exists() {
         File::open(&path).unwrap()
     } else {
@@ -90,7 +90,8 @@ fn load_drive_dir() -> PathBuf {
         file
     };
     let mut contents = String::new();
-    file.read_to_string(&mut contents);
+    let dir = file.read_to_string(&mut contents).unwrap();
+    info!("工作目录：{}", contents);
     let dir = PathBuf::from(contents).canonicalize().unwrap();
     info!("工作目录：{}", dir.display().to_string());
     dir
