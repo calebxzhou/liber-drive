@@ -30,6 +30,7 @@ export class MediaViewerComponent implements OnInit{
     this.mediaViewerToggled.emit(false);
   }
   update() {
+    this.displayingUrl = "";
     this.isOriginalLoaded=false;
     this.now=this.medias[this.index];
     if (this.isImageNow()) this.displayingUrl = this.preview();
