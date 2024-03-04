@@ -56,7 +56,7 @@ export class GalleryComponent implements OnInit {
   isVideo(media: MediaItem): boolean {
     return this.mediaService.isVideo(media);
   }
-  openViewer(index: number, media: MediaItem) {
+  openViewer(index: number) {
     this.displayViewer = true;
     this.medias = this.gallery.medias;
     this.index = index;

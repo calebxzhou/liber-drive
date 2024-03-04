@@ -27,12 +27,11 @@
     <img
       class="w-36 h-32 object-cover object-center"
       [src]="imgPreview(media)"
-      (click)="openViewer(i, media)"
+      (click)="openViewer(i)"
     />
   </ng-container>
   
 </div>
-<div *ngIf="displayViewer">
-    <lg-media-viewer [medias]="medias" [index]="index" (mediaViewerToggled)="displayViewer = $event"></lg-media-viewer>
-</div>
+    <lg-media-viewer *ngIf="displayViewer" [medias]="medias" [index]="index" (mediaViewerToggled)="displayViewer = $event"></lg-media-viewer>
+
 <!-- </div> -->
