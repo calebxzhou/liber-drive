@@ -93,7 +93,7 @@ fn load_drive_dir() -> PathBuf {
     let dir = file.read_to_string(&mut contents).unwrap();
     contents = contents.trim().to_owned();
     info!("工作目录：{}", contents);
-    let dir = PathBuf::from(contents);
+    let dir = PathBuf::from(contents).canonicalize().unwrap();
     info!("工作目录：{}", dir.display().to_string());
     dir
 }
