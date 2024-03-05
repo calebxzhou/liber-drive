@@ -1,4 +1,4 @@
- 
+
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -194,11 +194,7 @@ async fn get_preview(
         },
     };
 
-    let etag = etag::EntityTag::weak(format!(
-        "{0:x}-{1:x}",
-        media.size,
-        media.time
-    ).as_str());
+    let etag = etag::EntityTag::from_data(image.as_slice());
     let resp = Response::builder()
     .header(CACHE_CONTROL, "public, max-age=604800")
     .header(LAST_MODIFIED, convert_u64_to_http_date(modified).unwrap())
@@ -206,8 +202,12 @@ async fn get_preview(
     .header(CONTENT_TYPE,"image/webp")
     ;
     if let Some(if_mod)  = headers.get(IF_MODIFIED_SINCE){
-        if modified <= convert_http_date_to_u64(if_mod).unwrap(){
-            return Response::builder().status(304).body(Body::empty()).unwrap();
+        if modified <= convert_http_date_to_u64(if_mod).unwrap() {
+            if let Some(h_etag) = headers.get(ETAG){
+                if h_etag.to_str().unwrap() == etag.to_string(){
+                    return Response::builder().status(304).body(Body::empty()).unwrap();
+                }
+            }
         }
     }
     resp
