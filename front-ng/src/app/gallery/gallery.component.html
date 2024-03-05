@@ -6,7 +6,7 @@
     grid-gap: 0.5px;
   }
 </style>
-<mat-toolbar>
+<mat-toolbar style="height:32px">
   <button
     (click)="back()"
     mat-icon-button
@@ -23,15 +23,14 @@
 <div *ngFor="let day of getDays(gallery.medias)">
   <h2>{{ day | date : "yyyy.MM.dd" }}</h2> -->
 <div class="img-grid">
-  <ng-container *ngFor="let media of gallery.medias; let i = index">
+  <ng-container *ngFor="let media of medias; let i = index">
+    <a routerLink="/viewer/{{gallery.id}}/{{media.id}}">
     <img
       class="w-36 h-32 object-cover object-center"
       [src]="imgPreview(media)"
-      (click)="openViewer(i)"
-    />
+    /></a>
   </ng-container>
   
 </div>
-    <lg-media-viewer *ngIf="displayViewer" [medias]="medias" [index]="index" (mediaViewerToggled)="displayViewer = $event"></lg-media-viewer>
 
 <!-- </div> -->

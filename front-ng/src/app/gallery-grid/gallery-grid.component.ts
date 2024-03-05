@@ -1,11 +1,10 @@
 import { Component, HostListener, OnInit } from "@angular/core";
 import { MediaService } from "../media/media.service";
-import { Gallery, MediaItem } from "../media/media";
-import { CommonModule } from "@angular/common";
-import { toReadableSize } from "../util";
-import { MatGridListModule } from "@angular/material/grid-list"; 
+import { Gallery, GalleryInfo, MediaItem } from "../media/media";
+import { CommonModule } from "@angular/common"; 
 import { GalleryItemComponent } from "../gallery-item/gallery-item.component";
 import { RouterModule } from "@angular/router";
+import { Title } from "@angular/platform-browser";
 
 @Component({
   selector: "gallery-grid",
@@ -14,12 +13,13 @@ import { RouterModule } from "@angular/router";
   standalone: true,
 })
 export class GalleryGridComponent implements OnInit {
-  galleries: Gallery[] = [];
+  galleries: GalleryInfo[] = [];
 
-  constructor(private galleryService: MediaService) {}
+  constructor(private galleryService: MediaService,private titleService: Title) {}
  
 
   ngOnInit() {
+    this.titleService.setTitle("比特解放云相册服务器 2.0");
     this.getGalleries();
   }
 

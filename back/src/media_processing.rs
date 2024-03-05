@@ -19,21 +19,21 @@ lazy_static! {
 #[derive(Serialize, Clone)]
 pub struct ImageExif {
     //相机
-    make: String,
+    pub make: String,
     //镜头
-    lens: String,
+    pub lens: String,
     //档位
-    xp_prog: char,
+    pub xp_prog: char,
     //焦距
-    focal_len: String,
+    pub focal_len: String,
     //光圈
-    aperture: String,
+    pub aperture: String,
     //快门
-    shutter: String,
+    pub shutter: String,
     //ISO
-    iso: String,
+    pub iso: String,
     //拍摄时间
-    shot_time: String,
+    pub shot_time: String,
 }
 impl ImageExif {
     pub fn new(

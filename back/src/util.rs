@@ -1,8 +1,8 @@
  
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{error::Error, time::{SystemTime, UNIX_EPOCH}};
 
 use axum::http::HeaderValue;
-use chrono::{DateTime, Local, TimeZone, Utc};  
+use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};  
 
 pub fn human_readable_size(bytes: u64) -> String {
     const UNITS: [&str; 9] = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
@@ -62,4 +62,20 @@ pub fn convert_u64_to_http_date(timestamp: u64) -> Result<String, Box<dyn std::e
     // Convert the string to a HeaderValue
 
     Ok(http_date)
+}
+//日期字符串转时间 2024-01-01 12:12:12
+pub fn date_str_to_timestamp(date_time_str:&String)->Result<u64,Box<dyn Error>>{ 
+    Ok( NaiveDateTime::parse_from_str(date_time_str, "%Y-%m-%d %H:%M:%S")?.timestamp().try_into()?)
+
+}
+//文件名转时间 IMG_20200916_205836.jpg
+pub fn filename_to_timestamp(filename: &String) -> Result<u64,Box<dyn Error>> {
+    // Extract the date and time portion from the filename
+    let datetime_str = filename
+    .replace("IMG", "")
+    .replace(".jpg", "")
+    .replace(".heic", "").replace("_", "");
+
+    // Parse the date and time string
+    Ok(NaiveDateTime::parse_from_str(&datetime_str, "%Y%m%d%H%M%S")?.timestamp().try_into()?)
 }

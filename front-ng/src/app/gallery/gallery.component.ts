@@ -1,5 +1,5 @@
 import { Component, OnInit } from "@angular/core";
-import { ActivatedRoute, Router } from "@angular/router";
+import { ActivatedRoute, Router, RouterModule } from "@angular/router";
 import { Gallery, MediaItem } from "../media/media";
 import { Title } from "@angular/platform-browser";
 import { CommonModule } from "@angular/common";
@@ -16,19 +16,15 @@ import { MediaViewerComponent } from "../media-viewer/media-viewer.component";
     MatToolbarModule,
     MatIconModule,
     MatButtonModule,
-    MediaViewerComponent,
+    MediaViewerComponent ,RouterModule
   ],
   templateUrl: "./gallery.component.html",
   styles: ``,
 })
 export class GalleryComponent implements OnInit {
-
-
   title: string = "";
   gallery!: Gallery; // the gallery object to display
-  index = 0;
   medias!: MediaItem[];
-  displayViewer = false;
 
   constructor(
     private router: Router,
@@ -40,26 +36,20 @@ export class GalleryComponent implements OnInit {
   ngOnInit() {
     // get the id from the route parameter
     this.route.paramMap.subscribe((params) => {
-      let name = params.get("name") ?? "";
-      this.title = name;
-
-      const galleries = this.mediaService.galleries;
-      let gallery = galleries.find((g) => g.name === name);
-      if (!gallery) {
-        console.error("gallery !exists");
-        return;
+      let id = params.get("id");
+      if (id) {
+        this.mediaService.fetchGallery(+id).subscribe((gallery) => {
+          this.gallery=gallery;
+          this.medias=gallery.medias.sort((a,b)=>a.time-b.time)
+          this.title="相册："+gallery.name;
+        });
       }
-      this.gallery = gallery;
-      this.titleService.setTitle(gallery.name);
+     
+     
     });
   }
   isVideo(media: MediaItem): boolean {
     return this.mediaService.isVideo(media);
-  }
-  openViewer(index: number) {
-    this.displayViewer = true;
-    this.medias = this.gallery.medias;
-    this.index = index;
   }
   // get the unique dates of the medias in yyyyMMdd format
   getDays(medias: MediaItem[]): string[] {

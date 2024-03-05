@@ -13,10 +13,12 @@ import { WINDOW } from "./app/page.service";
 import { Routes, provideRouter, withComponentInputBinding } from "@angular/router"; 
 import { GalleryComponent } from "./app/gallery/gallery.component";
 import { GalleryGridComponent } from "./app/gallery-grid/gallery-grid.component";
+import { MediaViewerComponent } from "./app/media-viewer/media-viewer.component";
 
 export const routes: Routes = [
     {path: '',component: GalleryGridComponent},
-  { path: "gallery/:name", component: GalleryComponent },
+  { path: "gallery/:id", component: GalleryComponent },
+  { path: "viewer/:galleryId/:startMediaId", component: MediaViewerComponent },
 ];
 bootstrapApplication(AppComponent, {
   providers: [

@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-use std::convert::Infallible;
-use std::env;
+ 
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -11,14 +9,10 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use axum::body::Body;
-use axum::body::Bytes;
-use axum::error_handling::HandleErrorLayer;
-use axum::extract::State;
-use axum::http::header;
-use axum::http::header::ACCESS_CONTROL_MAX_AGE;
-use axum::http::header::CACHE_CONTROL;
-use axum::http::header::CONTENT_TYPE;
+use axum::body::Body; 
+use axum::extract::State; 
+
+use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE};
 use axum::http::header::ETAG;
 use axum::http::header::IF_MODIFIED_SINCE;
 use axum::http::header::LAST_MODIFIED;
@@ -37,17 +31,14 @@ use chrono::DateTime;
 use chrono::Local;
 use clap::crate_version;
 use env_logger::Builder; 
-use gallery::Gallery;
+use gallery::{Gallery, GalleryInfo};
 
 use lazy_static::lazy_static;
 use log::info;
 use log::LevelFilter;
 use media_processing::get_media_preview;
 use media_processing::ImageExif;
-use media_sender::handle_file;
-use mime_guess as mime_types;
-use serde_json::ser;
-use tower::ServiceBuilder;
+use media_sender::handle_file; 
 use tower_http::cors::CorsLayer;
 use util::convert_http_date_to_u64;
 use util::convert_u64_to_http_date; 
@@ -129,6 +120,10 @@ async fn main() {
             get(get_all_galleries).with_state(Arc::clone(&serv)),
         )
         .route(
+            "/gallery/:id",
+            get(get_gallery).with_state(Arc::clone(&serv)),
+        )
+        .route(
             "/preview/:id/:level",
             get(get_preview).with_state(Arc::clone(&serv)),
         )
@@ -154,9 +149,20 @@ async fn main() {
             .unwrap();
     axum::serve(listener, app).await.unwrap();
 }
-async fn get_all_galleries(State(serv): State<Arc<MainService>>) -> Json<Vec<Gallery>> {
-  
-    Json(serv.galleries.deref().to_vec())
+async fn get_all_galleries(State(serv): State<Arc<MainService>>) -> Json<Vec<GalleryInfo>> { 
+    
+    Json(serv.galleries_info.deref().to_vec())
+}
+async fn get_gallery(
+    axum::extract::Path(id): axum::extract::Path<u32>,
+    State(serv): State<Arc<MainService>>
+) -> impl IntoResponse{
+    match serv.galleries.get(&id) {
+        Some(g) => {
+            Json(g).into_response()
+        },
+        None => StatusCode::NOT_FOUND.into_response(),
+    } 
 }
 async fn get_exif(
     axum::extract::Path(id): axum::extract::Path<u32>,

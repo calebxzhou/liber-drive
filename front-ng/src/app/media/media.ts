@@ -12,6 +12,14 @@ export  interface MediaItem {
     size: number;
     exif?: ImageExif;
 }
+export interface GalleryInfo {
+    id: number;
+    name: string;
+    size: number;
+    media_amount: number;
+    //预览图4张
+    tbnl_media_ids: number[];
+}
 
 export interface ImageExif {
     make: string; // 相机

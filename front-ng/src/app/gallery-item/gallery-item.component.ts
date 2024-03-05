@@ -1,9 +1,10 @@
 import { Component, Input, OnInit } from "@angular/core";
 import { MediaService } from "../media/media.service";
-import { Gallery, MediaItem } from "../media/media";
+import { Gallery, GalleryInfo, MediaItem } from "../media/media";
 import { CommonModule } from "@angular/common";
 import { MatGridList, MatGridTile } from "@angular/material/grid-list";
 import { toReadableSize } from "../util";
+import { Title } from "@angular/platform-browser";
 
 @Component({
   selector: "lg-gallery",
@@ -16,24 +17,16 @@ import { toReadableSize } from "../util";
     `,
 })
 export class GalleryItemComponent implements OnInit {
-  @Input() gallery!: Gallery;
+  @Input() gallery!: GalleryInfo;
   thumbnailUrls: string[] = [];
   size:string="";
   amount:number=0;
-  constructor(private mediaService: MediaService) {}
+  constructor(private mediaService: MediaService,private titleService: Title,) {}
  
   ngOnInit(): void { 
-    this.size=toReadableSize(this.gallery.size);
     
-    const values = new Map(Object.entries(this.gallery.medias)).values();
-    const mediaArray = Array.from(values).map(media=>this.mediaService.getThumbnailUrl(media.id));
-    this.amount=mediaArray.length;
-    const thirdCount = Math.floor(mediaArray.length / 3);
-    this.thumbnailUrls = [
-      mediaArray[0], // First image
-      mediaArray[thirdCount], // 1/3 count image
-      mediaArray[2 * thirdCount], // 2/3 count image
-      mediaArray[mediaArray.length - 1] // Last image
-    ];
+    this.size=toReadableSize(this.gallery.size);
+    this.amount=this.gallery.media_amount;
+    this.thumbnailUrls = this.gallery.tbnl_media_ids.map(id=>this.mediaService.getThumbnailUrl(id))
   }
 }
