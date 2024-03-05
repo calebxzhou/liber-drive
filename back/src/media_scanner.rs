@@ -49,6 +49,7 @@ fn scan_single_gallery(entry: &DirEntry, media_id: &mut u32, gallery_id: u32) ->
         }
         let path = media.path().to_path_buf();
         if let Some(ext) = path.extension() {
+            let ext = ext.to_ascii_lowercase();
             if !(ext == "jpg" || ext == "mp4") {
                 continue;
             }
