@@ -52,7 +52,7 @@ export class MediaViewerComponent implements OnInit {
       if(smid&&gid){
         this.mediaService.fetchGallery(+gid).subscribe((gallery) => {
           this.gallery=gallery;
-          this.medias=gallery.medias;
+          this.medias=gallery.medias.sort((a,b)=>a.time-b.time);
           this.index=gallery.medias.findIndex(m=>m.id===(+(smid??'0')));
           this.update();
         });
