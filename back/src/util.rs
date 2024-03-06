@@ -74,7 +74,7 @@ pub fn filename_to_timestamp(filename: &String) -> Result<u64,Box<dyn Error>> {
     let datetime_str = filename
     .replace("IMG", "")
     .replace(".jpg", "")
-    .replace(".heic", "").replace("_", "");
+    .replace(".heic", "").replace('_', "");
 
     // Parse the date and time string
     Ok(NaiveDateTime::parse_from_str(&datetime_str, "%Y%m%d%H%M%S")?.timestamp().try_into()?)

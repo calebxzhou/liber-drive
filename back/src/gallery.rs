@@ -1,6 +1,6 @@
 use core::fmt; 
-use rayon::vec;
-use serde::{Deserialize, Serialize};
+
+use serde::Serialize;
 
 use crate::{media_item::MediaItem, util::human_readable_size};
 
@@ -39,7 +39,7 @@ impl GalleryInfo{
         let len = medias.len();
         if medias.len() < 4 {
             // clone the last element and repeat it until four
-            if let None = medias.last() {
+            if medias.last().is_none() {
                 return vec![];
             }
             let last = medias.last().cloned().unwrap();

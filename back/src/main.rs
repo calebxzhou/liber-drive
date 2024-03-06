@@ -2,11 +2,11 @@
 use std::fs;
 use std::fs::File;
 use std::io::Write;
-use std::io::{self, Read, Seek, SeekFrom};
+use std::io::{Read};
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 use std::ops::Deref;
 use std::path::PathBuf;
-use std::str::FromStr;
+
 use std::sync::Arc;
 
 use axum::body::Body; 
@@ -16,28 +16,28 @@ use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE};
 use axum::http::header::ETAG;
 use axum::http::header::IF_MODIFIED_SINCE;
 use axum::http::header::LAST_MODIFIED;
-use axum::http::header::RANGE;
+
 use axum::http::Extensions;
 use axum::http::HeaderMap;
 use axum::http::HeaderValue;
-use axum::http::Request;
+
 use axum::http::Response;
 
 use axum::http::StatusCode;
 use axum::Json;
 use axum::Router;
 use axum::{response::IntoResponse, routing::get}; 
-use chrono::DateTime;
-use chrono::Local;
-use clap::crate_version;
-use env_logger::Builder; 
-use gallery::{Gallery, GalleryInfo};
 
-use lazy_static::lazy_static;
+use chrono::Local;
+
+use env_logger::Builder; 
+use gallery::{GalleryInfo};
+
+
 use log::info;
 use log::LevelFilter;
 use media_processing::get_media_preview;
-use media_processing::ImageExif;
+
 use media_sender::handle_file; 
 use tower_http::cors::CorsLayer;
 use util::convert_http_date_to_u64;
@@ -74,14 +74,14 @@ fn logger_init() {
 fn load_drive_dir() -> PathBuf {
     let path = std::path::Path::new("./drive_dir.txt");
     let mut file = if path.exists() {
-        File::open(&path).unwrap()
+        File::open(path).unwrap()
     } else {
-        let mut file = File::create(&path).unwrap();
+        let mut file = File::create(path).unwrap();
         file.write_all(b".");
         file
     };
     let mut contents = String::new();
-    let dir = file.read_to_string(&mut contents).unwrap();
+    let _dir = file.read_to_string(&mut contents).unwrap();
     contents = contents.trim().to_owned();
     info!("工作目录：{}", contents);
     let dir = PathBuf::from(contents).canonicalize().unwrap();
@@ -97,7 +97,7 @@ async fn main() {
     .gzip(true)
     .deflate(true)
     .br(true)
-    .compress_when(|status: axum::http::StatusCode, _version: axum::http::Version, headers: &HeaderMap, _extensions: &Extensions| {
+    .compress_when(|_status: axum::http::StatusCode, _version: axum::http::Version, headers: &HeaderMap, _extensions: &Extensions| {
         // Get the content type of the response
         let content_type = headers.get(  CONTENT_TYPE);
 

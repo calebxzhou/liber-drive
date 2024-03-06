@@ -27,7 +27,7 @@ export function toReadableTime(timestamp: number): string {
       bytes /= 1024;
       i++;
     }
-    return bytes.toFixed(2) + " " + units[i];
+    return bytes.toFixed(1) + " " + units[i];
   }
   export function extractNumbers(input:string):number {
     return Number(input.replace(/\D/g, "")); // Replace non-digits with an empty string

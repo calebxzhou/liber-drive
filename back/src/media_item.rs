@@ -51,7 +51,7 @@ impl MediaItem {
 }
 impl fmt::Display for MediaItem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[{}] {}", self.id, self.path.display().to_string())
+        write!(f, "[{}] {}", self.id, self.path.display())
     }
 }
 

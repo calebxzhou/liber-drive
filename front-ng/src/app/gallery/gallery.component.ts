@@ -8,6 +8,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { MediaViewerComponent } from "../media-viewer/media-viewer.component";
+import { toReadableSize } from '../util';
 @Component({
   selector: "lg-gallery",
   standalone: true,
@@ -73,6 +74,7 @@ export class GalleryComponent implements OnInit {
   back() {
     this.router.navigate(["/"]);
   }
+  size(media:MediaItem){return toReadableSize(media.size) }
   imgPreview(media: MediaItem) {
     return this.mediaService.getThumbnailUrl(media.id);
   }

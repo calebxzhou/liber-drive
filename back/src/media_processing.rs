@@ -13,7 +13,7 @@ use serde::Serialize;
 
 lazy_static! {
     //1=512x缩图 2=256x缩图 3=128缩图 4=64缩图 5=32缩图
-    static ref PREVIEW_PIXELS : Vec<u32> = [512,256,128,64,32].iter().cloned().collect();
+    static ref PREVIEW_PIXELS : Vec<u32> = [512,256,128,64,32].to_vec();
     static ref PREVIEW_LEVEL_PIXELS :HashMap<u8,u32> = [(1,512),(2,256),(3,128),(4,64),(5,32)].iter().cloned().collect();
 }
 #[derive(Serialize, Clone)]
@@ -76,7 +76,7 @@ pub fn get_media_preview(level: &u8, media_path: &PathBuf) -> Result<Vec<u8>, Bo
         .to_lowercase();
 
     let cache_path =
-        Path::new("cache").join(&format!("tb_{}_{}_{}.webp", level, file_size, file_name));
+        Path::new("cache").join(format!("tb_{}_{}_{}.webp", level, file_size, file_name));
     //缓存存在
     if cache_path.exists() {
         let mut file = std::fs::File::open(&cache_path)?;
@@ -85,67 +85,64 @@ pub fn get_media_preview(level: &u8, media_path: &PathBuf) -> Result<Vec<u8>, Bo
         Ok(buffer)
     }
     //缓存不存在
-    else {
-        if file_name.ends_with(".mp4") || file_name.ends_with(".mov") {
-            //是视频 截取第一帧
-            let mut ffmpeg_output = Command::new("ffmpeg")
-                .arg("-i") // input file
-                .arg(media_path.display().to_string()) // replace with your file
-                .arg("-vframes") // number of video frames to output
-                .arg("1") // we only want the first frame
-                .arg("-f") // force format
-                .arg("image2pipe") // pipe image data to stdout
-                .arg("-") // output to stdout
-                .stdout(Stdio::piped()) // capture stdout
-                .spawn()
-                .expect("Failed to execute FFmpeg command")
-                .stdout
-                .expect("Failed to capture stdout");
+    else if file_name.ends_with(".mp4") || file_name.ends_with(".mov") {
+        //是视频 截取第一帧
+        let mut ffmpeg_output = Command::new("ffmpeg")
+            .arg("-i") // input file
+            .arg(media_path.display().to_string()) // replace with your file
+            .arg("-vframes") // number of video frames to output
+            .arg("1") // we only want the first frame
+            .arg("-f") // force format
+            .arg("image2pipe") // pipe image data to stdout
+            .arg("-") // output to stdout
+            .stdout(Stdio::piped()) // capture stdout
+            .spawn()
+            .expect("Failed to execute FFmpeg command")
+            .stdout
+            .expect("Failed to capture stdout");
 
-            let mut buffer = Vec::new();
-            ffmpeg_output
-                .read_to_end(&mut buffer)
-                .expect("Failed to read FFmpeg output");
+        let mut buffer = Vec::new();
+        ffmpeg_output
+            .read_to_end(&mut buffer)
+            .expect("Failed to read FFmpeg output");
 
-            let cursor = Cursor::new(buffer);
+        let cursor = Cursor::new(buffer);
 
-            let img = image::io::Reader::new(cursor)
-                .with_guessed_format()
-                .expect("Failed to guess image format")
-                .decode()
-                .expect("Failed to decode image");
-            let width = img.width();
-            let webp_mem = if let Some(height) = height {
-                let image = img.resize(width, *height, FilterType::Nearest);
-                webp::Encoder::from_image(&image)?.encode(80f32)
-            } else {
-                webp::Encoder::from_image(&img)?.encode(40f32)
-            };
-            fs::write(&cache_path, &*webp_mem)?;
-            Ok(webp_mem.to_vec())
-        } else if file_name.ends_with(".jpg") || file_name.ends_with(".png") {
-            //是图片
-            let image = image::open(media_path)?;
-            let width = image.width();
-            
-            //缩略图
-            let webp_mem = if let Some(height) = height {
-                let image = image.resize(width, *height, FilterType::Nearest);
-                webp::Encoder::from_image(&image)?.encode(80f32)
-            } else {
-                webp::Encoder::from_image(&image)?.encode(40f32)
-            };
-            fs::write(&cache_path, &*webp_mem)?;
-            Ok(webp_mem.to_vec())
+        let img = image::io::Reader::new(cursor)
+            .with_guessed_format()
+            .expect("Failed to guess image format")
+            .decode()
+            .expect("Failed to decode image");
+        let width = img.width();
+        let webp_mem = if let Some(height) = height {
+            let image = img.resize(width, *height, FilterType::Nearest);
+            webp::Encoder::from_image(&image)?.encode(80f32)
         } else {
-            Ok(vec![])
-        }
+            webp::Encoder::from_image(&img)?.encode(40f32)
+        };
+        fs::write(&cache_path, &*webp_mem)?;
+        Ok(webp_mem.to_vec())
+    } else if file_name.ends_with(".jpg") || file_name.ends_with(".png") {
+        //是图片
+        let image = image::open(media_path)?;
+        let width = image.width();
+        
+        //缩略图
+        let webp_mem = if let Some(height) = height {
+            let image = image.resize(width, *height, FilterType::Nearest);
+            webp::Encoder::from_image(&image)?.encode(80f32)
+        } else {
+            webp::Encoder::from_image(&image)?.encode(40f32)
+        };
+        fs::write(&cache_path, &*webp_mem)?;
+        Ok(webp_mem.to_vec())
+    } else {
+        Ok(vec![])
     }
 }
 fn get_exif_field(exif: &exif::Exif, tag: Tag) -> String {
     ImageExif::get_field_value(exif, tag)
-        .replace("\"", "")
-        .replace(",", "")
+        .replace(['\"', ','], "")
         .trim()
         .to_string()
 }

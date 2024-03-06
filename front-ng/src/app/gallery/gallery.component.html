@@ -5,6 +5,7 @@
     grid-template-rows: repeat(auto-fit, minmax(128px, 1fr));
     grid-gap: 0.5px;
   }
+ 
 </style>
 <mat-toolbar style="height:32px;font-size: 12px;">
   <button
@@ -24,11 +25,20 @@
   <h2>{{ day | date : "yyyy.MM.dd" }}</h2> -->
 <div class="img-grid">
   <ng-container *ngFor="let media of medias; let i = index">
-    <a routerLink="/viewer/{{gallery.id}}/{{media.id}}">
-    <img
-      class="w-36 h-32 object-cover object-center"
-      [src]="imgPreview(media)"
-    /></a>
+    <div class="relative">
+      <a routerLink="/viewer/{{gallery.id}}/{{media.id}}">
+        
+      <img
+        class="w-36 h-32 object-cover object-center relative "
+        [src]="imgPreview(media)"
+      />
+      @if (isVideo(media)) {
+        <div class="absolute bottom-2 left-2 w-1/2 text-white bg-black text-2xs rounded-3xl">▶️{{size(media)}}</div>
+      }
+    </a>
+
+    </div>
+    
   </ng-container>
   
 </div>

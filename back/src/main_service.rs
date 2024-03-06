@@ -14,7 +14,7 @@ pub struct MainService {
 }
 impl MainService {
     pub fn new(drive_dir: &PathBuf) -> Self {
-        let galleries = scan_all_galleries(&drive_dir).expect("扫描相册错误！");
+        let galleries = scan_all_galleries(drive_dir).expect("扫描相册错误！");
         info!("共{}个相册", galleries.len());
         let medias: HashMap<u32, MediaItem> = galleries
             .iter()

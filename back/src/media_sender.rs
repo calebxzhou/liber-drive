@@ -5,11 +5,11 @@ use axum::{
             self, ACCEPT_RANGES, CACHE_CONTROL,  CONTENT_TYPE, ETAG,
             IF_MODIFIED_SINCE, LAST_MODIFIED,
         },
-        HeaderMap, Response, StatusCode,
+        HeaderMap, Response,
     },
     response::IntoResponse,
 };
-use std::{fs, io::SeekFrom, };
+use std::{io::SeekFrom, };
 use tokio::{
     fs::File,
     io::AsyncSeekExt,
@@ -99,7 +99,7 @@ pub async fn handle_file(media: &MediaItem, headers: &HeaderMap) -> impl IntoRes
         }
 
         // Seek to the start position of the range
-        if let Err(err) = file.seek(SeekFrom::Start(range.start)).await {
+        if let Err(_err) = file.seek(SeekFrom::Start(range.start)).await {
             return Response::builder()
                 .status(400)
                 .body(Body::from("cant Seek to the start position of the range"))
