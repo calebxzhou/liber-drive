@@ -51,14 +51,14 @@ impl MediaItem {
         ))
     }
     //是否已创建预览 小图+大图
-    pub fn is_preview_created(&self) -> bool {
-        self.get_preview_path(true).exists() && self.get_preview_path(false).exists()
+    pub fn is_preview_created(&self,thumbnail:bool) -> bool {
+        self.get_preview_path(thumbnail).exists()
     }
     //获取预览
     pub fn get_preview(&self, thumbnail: bool) -> ResultAnyErr<Vec<u8>> {
         //没预览
-        if !self.is_preview_created() {
-            self.create_preview()?;
+        if !self.is_preview_created(thumbnail) {
+            self.create_preview(thumbnail)?;
         }
         let mut file = std::fs::File::open(&self.get_preview_path(thumbnail))?;
         let mut buffer = Vec::new();
@@ -66,7 +66,7 @@ impl MediaItem {
         Ok(buffer)
     }
     //创建预览
-    pub fn create_preview(&self) -> ResultAnyErr<()> {
+    pub fn create_preview(&self, thumbnail: bool) -> ResultAnyErr<()> {
         let path = &self.path;
 
         let image = if is_video(path) {
@@ -79,12 +79,9 @@ impl MediaItem {
             return Err("nor img/video!".into());
         };
         //缩略图
-        let webp_mem = compress_image_webp(&image, true)?.to_vec();
-        //保存小图缓存
-        fs::write(&self.get_preview_path(true), &webp_mem)?;
-        let webp_mem = compress_image_webp(&image, false)?.to_vec();
-        //保存大图缓存
-        fs::write(&self.get_preview_path(false), &webp_mem)?;
+        let webp_mem = compress_image_webp(&image, thumbnail)?.to_vec();
+        //保存 缓存
+        fs::write(&self.get_preview_path(true), &webp_mem)?; 
         Ok(())
     }
 }
