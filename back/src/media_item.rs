@@ -81,7 +81,7 @@ impl MediaItem {
         //缩略图
         let webp_mem = compress_image_webp(&image, thumbnail)?.to_vec();
         //保存 缓存
-        fs::write(&self.get_preview_path(true), &webp_mem)?; 
+        fs::write(&self.get_preview_path(thumbnail), &webp_mem)?; 
         Ok(())
     }
 }
