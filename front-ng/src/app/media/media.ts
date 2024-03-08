@@ -26,8 +26,8 @@ export interface ImageExif {
     lens: string; // 镜头
     xp_prog: string; // 档位, char in Rust can be represented as string in TypeScript
     focal_len: string; // 焦距
-    aperture: string; // 光圈
-    shutter: string; // 快门
+    av: string; // 光圈
+    tv: string; // 快门
     iso: string; // ISO
     shot_time: string; // 拍摄时间
 }

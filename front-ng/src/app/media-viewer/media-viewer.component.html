@@ -1,10 +1,10 @@
-<div class="fixed inset-0 flex flex-col justify-center z-10 bg-black">
+<div class="w-full h-full bg-black">
     <!-- 顶部 -->
-    <div class="absolute top-0 items-center">
+    <div class="">
         <!-- 关闭按钮 -->
         <button class="text-xl float-start" (click)="close()">◀️</button>
         <!-- 文件名 尺寸 -->
-        <span class="text-xs leading-none text-white">
+        <span class="text-2xs leading-none text-white">
             {{ title }}
         </span>
     </div>
@@ -12,10 +12,9 @@
         class="block mx-auto object-contain h-[90vh]" />
     <video controls crossorigin playsinline *ngIf="isVideoNow()"
     [src]="displayingUrl" class="block mx-auto object-contain h-[90vh]"></video>
-    <div class="absolute bottom-0 text-center text-white mb-4 w-full">
+    <div class="block text-center text-white w-full">
         <button (click)="prev()">⬅️上一张</button>&emsp;
         <button *ngIf="isImageNow() && !isOriginalLoaded" (click)="loadOriginal()">💾查看原图{{ size }}</button>&emsp;
         <button (click)="next()">下一张➡️</button>&emsp;
-
     </div>
 </div>

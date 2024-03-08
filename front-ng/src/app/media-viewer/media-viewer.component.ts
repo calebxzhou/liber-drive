@@ -73,7 +73,7 @@ export class MediaViewerComponent implements OnInit {
     let title = `${this.now.name}`;
     let exif = this.now.exif;
     if (exif) {
-      title += `📷${exif.make}🔭${exif.lens}📐${exif.focal_len}📸${exif.xp_prog}挡👁️${exif.aperture}⏱${exif.shutter} ISO${exif.iso}
+      title += `📷${exif.make}🔭${exif.lens}📐${exif.focal_len}mm📸${exif.xp_prog}挡👁️F${exif.av}⏱${exif.tv}s ISO${exif.iso}
       ⏰${exif.shot_time}`;
     }
     this.title = title;

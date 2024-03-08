@@ -36,7 +36,7 @@ impl MainService {
             .filter(|g| g.media_amount != 0)
             .collect();
         info!("共{}个文件 载入完成", medias.len());
-        
+
         Self {
             galleries,
             medias,
@@ -78,14 +78,19 @@ impl MainService {
             if media_entry.file_type().is_dir() {
                 continue;
             }
+
             //既不是图片也不是视频，跳过
-            if !(media_item::is_video(&path) 
-            || media_item::is_image(&path) || media_item::is_heif_image(&path)
-        ) {
+            if !(media_item::is_video(&path)
+                || media_item::is_image(&path))
+            {
                 continue;
             }
 
             let name = media_entry.file_name().to_string_lossy().into_owned();
+            //跳过点开头的文件
+            if name.starts_with(".") {
+                continue;
+            }
             let meta = fs::metadata(&path)?;
             let size = meta.len();
             //时间
