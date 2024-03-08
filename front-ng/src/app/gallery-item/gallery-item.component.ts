@@ -18,15 +18,15 @@ import { Title } from "@angular/platform-browser";
 })
 export class GalleryItemComponent implements OnInit {
   @Input() gallery!: GalleryInfo;
-  thumbnailUrls: string[] = [];
   size:string="";
   amount:number=0;
+  thumbnailUrl:string="";
   constructor(private mediaService: MediaService,private titleService: Title,) {}
  
   ngOnInit(): void { 
     
     this.size=toReadableSize(this.gallery.size);
     this.amount=this.gallery.media_amount;
-    this.thumbnailUrls = this.gallery.tbnl_media_ids.map(id=>this.mediaService.getThumbnailUrl(id))
+    this.thumbnailUrl = this.mediaService.getThumbnailUrl(this.gallery.tbnl_media_id);
   }
 }

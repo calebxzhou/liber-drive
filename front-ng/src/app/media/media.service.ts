@@ -58,9 +58,9 @@ export class MediaService{
     return this.http.get(this.getPreviewUrl(id), { responseType: 'blob' });
   }
   isVideo(media: MediaItem){
-    return media.name.toLocaleLowerCase().endsWith(".mp4")
+    return media.name.toLocaleLowerCase().endsWith(".mp4")||media.name.toLocaleLowerCase().endsWith(".mov")
   }
   isImage(media: MediaItem){
-    return media.name.toLocaleLowerCase().endsWith(".jpg")
+    return media.name.toLocaleLowerCase().endsWith(".jpg")||media.name.toLocaleLowerCase().endsWith(".png")||media.name.toLocaleLowerCase().endsWith(".heic")
   }
 }

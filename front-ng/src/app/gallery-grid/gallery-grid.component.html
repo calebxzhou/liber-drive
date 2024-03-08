@@ -1,12 +1,12 @@
 <style>
   .grid-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-    grid-template-rows: repeat(auto-fit, minmax(128px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(128px, 0.8fr));
+    grid-auto-rows: 1fr;
     grid-gap: 1px;
   }
 </style>
-<div class="grid-container p-4">
+<div class="grid-container p-1">
   
   <div *ngFor="let gallery of galleries">
    

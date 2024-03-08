@@ -2,22 +2,19 @@ use axum::{
     body::Body,
     http::{
         header::{
-            self, ACCEPT_RANGES, CACHE_CONTROL,  CONTENT_TYPE, ETAG,
-            IF_MODIFIED_SINCE, LAST_MODIFIED,
+            self, ACCEPT_RANGES, CACHE_CONTROL, CONTENT_TYPE, ETAG, IF_MODIFIED_SINCE,
+            LAST_MODIFIED,
         },
         HeaderMap, Response,
     },
     response::IntoResponse,
 };
-use std::{io::SeekFrom, };
-use tokio::{
-    fs::File,
-    io::AsyncSeekExt,
-};
+use std::io::SeekFrom;
+use tokio::{fs::File, io::AsyncSeekExt};
 use tokio_util::io::ReaderStream;
 
 use crate::{
-    media_item::MediaItem,
+    media_item::{is_image, is_video, MediaItem},
     util::{convert_http_date_to_u64, convert_u64_to_http_date},
 };
 
@@ -76,9 +73,9 @@ pub async fn handle_file(media: &MediaItem, headers: &HeaderMap) -> impl IntoRes
 
     let resp = resp.header(ACCEPT_RANGES, "bytes").header(
         CONTENT_TYPE,
-        if media.is_image() {
+        if is_image(&media.path) {
             "image/jpeg"
-        } else if media.is_video() {
+        } else if is_video(&media.path) {
             "video/mp4"
         } else {
             return Response::builder()

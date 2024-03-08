@@ -77,14 +77,6 @@ export class MediaViewerComponent implements OnInit {
       ⏰${exif.shot_time}`;
     }
     this.title = title;
-    //this.prefetch5Images();
-  }
-  prefetch5Images(){
-    this.mediaService.fetchPreview(this.medias[this.index-1].id).subscribe(a=>this.imageCache.push(a));
-    this.mediaService.fetchPreview(this.medias[this.index-2].id).subscribe(a=>this.imageCache.push(a));
-    this.mediaService.fetchPreview(this.medias[this.index+1].id).subscribe(a=>this.imageCache.push(a));
-    this.mediaService.fetchPreview(this.medias[this.index+2].id).subscribe(a=>this.imageCache.push(a));
-    this.mediaService.fetchPreview(this.medias[this.index+3].id).subscribe(a=>this.imageCache.push(a));
   }
   prev() {
     if (this.index > 0) this.index--;

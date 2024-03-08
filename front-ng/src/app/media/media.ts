@@ -18,7 +18,7 @@ export interface GalleryInfo {
     size: number;
     media_amount: number;
     //预览图4张
-    tbnl_media_ids: number[];
+    tbnl_media_id: number;
 }
 
 export interface ImageExif {
