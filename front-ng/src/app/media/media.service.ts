@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEvent, HttpEventType } from '@angular/common/http';
 import { Injectable, OnInit } from '@angular/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, filter, tap } from 'rxjs';
 import { PageService } from '../page.service';
 import { Gallery, GalleryInfo, MediaItem } from './media';
 
@@ -19,6 +19,14 @@ export class MediaService{
   }
   fetchGallery(id:number) :Observable< Gallery>{
     return this.http.get<Gallery>(`${this.getUrl()}/gallery/${id}`)
+  }
+  
+  fetchImage(url: string): Observable<HttpEvent<Blob>> {
+    return this.http.get(url, { 
+      responseType: 'blob',
+      reportProgress: true,
+      observe: 'events'
+    });
   }
   processGalleries(g:GalleryInfo[]): GalleryInfo[]{
     return g

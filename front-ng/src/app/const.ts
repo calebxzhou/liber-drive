@@ -13,3 +13,5 @@ export const FILE_TYPE_EXTENSION = {
     video: ["mp4", "mkv", "flv", "gif", "avi", "mov","wmv"],
     word: ["doc", "docx"],
   };
+
+  export const LOADING_GIF = "assets/loading.gif";

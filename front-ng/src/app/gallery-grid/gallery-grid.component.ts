@@ -19,7 +19,7 @@ export class GalleryGridComponent implements OnInit {
  
 
   ngOnInit() {
-    this.titleService.setTitle("比特解放云相册 2.0");
+    this.titleService.setTitle("嘉乐周的光影世界 2.0");
     this.getGalleries();
   }
 

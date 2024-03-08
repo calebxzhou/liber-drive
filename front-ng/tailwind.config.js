@@ -8,6 +8,7 @@ module.exports = {
     fontSize: {
       // ... other font sizes
       '2xs': '0.7rem', // 6px
+      'xs': '0.8rem'
     },
   },
   plugins: [],

@@ -2,20 +2,24 @@
     <!-- 顶部 -->
     <div class="">
         <!-- 关闭按钮 -->
-        <button class="text-xl float-start" (click)="close()">◀️</button>
+        <button class="text-xl float-left" (click)="close()">◀️</button>
         <!-- 文件名 尺寸 -->
-        <span class="text-2xs leading-none text-white">
+        <div class="text-2xs leading-none text-white">
             {{ title }}
-        </span>
+        </div>
     </div>
-    <img *ngIf="isImageNow()" [src]="displayingUrl"
-        class="block mx-auto object-contain h-[90vh]" />
-    <video controls crossorigin playsinline *ngIf="isVideoNow()"
+    <!-- 图片 -->
+    <img *ngIf="this.now!==undefined && isImageNow()" [src]="displayingUrl"
+        class="block mx-auto object-contain h-[90vh]" (wheel)="onWheel($event)"/>
+        <!-- 视频 -->
+    <video controls crossorigin playsinline *ngIf="this.now!==undefined &&isVideoNow()"
     [src]="displayingUrl" class="block mx-auto object-contain h-[90vh]"></video>
     <div class="absolute bottom-0 text-center text-white mb-1 w-full">
-        <button (click)="prev()">⬅️上一张</button>&emsp;
-        <button *ngIf="isImageNow() && !isOriginalLoaded" (click)="loadOriginal()">💾查看原图{{ size }}</button>&emsp;
-        <button (click)="next()">下一张➡️</button>&emsp;
+        <button *ngIf="this.index>0" class="float-left" (click)="prev()">⬅️上一张</button>&emsp;
+        <button *ngIf="this.now!==undefined  && isImageNow() &&  !isOriginalLoaded" (click)="loadOriginal()">💾
+            查看原图
+            {{ fullImageSize }}</button>&emsp;
+        <button *ngIf="this.index<this.medias.length - 1" class="float-right" (click)="next()">下一张➡️</button>&emsp;
 
     </div>
 </div>

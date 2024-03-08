@@ -5,16 +5,16 @@
   text-overflow: ellipsis;font-size-adjust: 0.44;
   }
 </style>
-<div class="p-2  cursor-pointer">
+<div [@fadeInOut]="'in'" class="p-2  cursor-pointer">
 
   <div class="gallery truncate rounded-3xl overflow-hidden  hover:bg-gray-200" >
     <img [src]="thumbnailUrl" class="w-32 h-28 object-cover object-center">
   </div>
 
-  <span class="block w-fit text-sm">
+  <span class="text-xs block w-fit">
     {{ gallery.name }}
   </span>
-  <span class="block text-gray-500 text-2xs">
+  <span class="text-2xs block text-gray-500 ">
   {{amount}}x<span class="float-right text-gray-300 text-xs ">
   {{size}}
      </span>

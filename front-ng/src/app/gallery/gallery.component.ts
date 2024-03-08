@@ -9,6 +9,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { MediaViewerComponent } from "../media-viewer/media-viewer.component";
 import { toReadableSize } from '../util';
+import { animate, state, style, transition, trigger } from "@angular/animations";
 @Component({
   selector: "lg-gallery",
   standalone: true,
@@ -21,6 +22,14 @@ import { toReadableSize } from '../util';
   ],
   templateUrl: "./gallery.component.html",
   styles: ``,
+  animations: [
+    trigger('fadeInOut', [
+      state('void', style({
+        opacity: 0
+      })),
+      transition('void <=> *', animate(200)),
+    ]),
+  ],
 })
 export class GalleryComponent implements OnInit {
   title: string = "";

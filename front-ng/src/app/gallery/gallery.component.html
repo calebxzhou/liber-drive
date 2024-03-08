@@ -29,6 +29,7 @@
       <a routerLink="/viewer/{{gallery.id}}/{{media.id}}">
         
       <img
+      [@fadeInOut]="'in'"
         class="w-36 h-32 object-cover object-center relative "
         [src]="imgPreview(media)"
       />
