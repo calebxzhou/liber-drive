@@ -12,9 +12,10 @@
         class="block mx-auto object-contain h-[90vh]" />
     <video controls crossorigin playsinline *ngIf="isVideoNow()"
     [src]="displayingUrl" class="block mx-auto object-contain h-[90vh]"></video>
-    <div class="block text-center text-white w-full">
+    <div class="absolute bottom-0 text-center text-white mb-1 w-full">
         <button (click)="prev()">⬅️上一张</button>&emsp;
         <button *ngIf="isImageNow() && !isOriginalLoaded" (click)="loadOriginal()">💾查看原图{{ size }}</button>&emsp;
         <button (click)="next()">下一张➡️</button>&emsp;
+
     </div>
 </div>
