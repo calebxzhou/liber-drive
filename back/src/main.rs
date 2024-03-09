@@ -177,19 +177,19 @@ async fn get_preview(
 
     let etag = etag::EntityTag::from_data(image.as_slice());
     let resp = Response::builder()
-        .header(CACHE_CONTROL, "public, max-age=604800")
+        .header(CACHE_CONTROL, "public, max-age=3600")
         .header(LAST_MODIFIED, convert_u64_to_http_date(modified).unwrap())
         .header(ETAG, etag.to_string())
         .header(CONTENT_TYPE, "image/webp");
-    if let Some(if_mod) = headers.get(IF_MODIFIED_SINCE) {
+    /* if let Some(if_mod) = headers.get(IF_MODIFIED_SINCE) {
         if modified <= convert_http_date_to_u64(if_mod).unwrap() {
             if let Some(h_etag) = headers.get(ETAG) {
                 if h_etag.to_str().unwrap() == etag.to_string() {
-                    return resp.status(304).body(Body::empty()).unwrap();
+                    return resp.status(304).body(Body::from(image)).unwrap();
                 }
             }
         }
-    }
+    } */
     resp.status(200).body(Body::from(image)).unwrap()
 }
 async fn get_media(
