@@ -1,5 +1,8 @@
-<!-- 导航栏 -->
-<nav class="flex sticky top-0 bg-white shadow-md items-center">
-    <button class="text-4xl mr-2" (click)="goBack()">◀️</button>
-    <span class="text-xl">{{ title }}</span>
-</nav>
+<mat-toolbar color="primary" class="mat-elevation-z4 fixed mb-12">
+    <img class="w-16" src="assets/avatar.webp"/>
+    <div class="spacer"></div>
+    <a mat-button routerLink="/home">SITU活动/美景</a>
+    <a mat-button routerLink="/about">About</a>
+    <a mat-button routerLink="/contact">Contact</a>
+  </mat-toolbar>
+  

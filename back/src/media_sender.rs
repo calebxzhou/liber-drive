@@ -5,7 +5,7 @@ use axum::{
             self, ACCEPT_RANGES, CACHE_CONTROL, CONTENT_TYPE, ETAG, IF_MODIFIED_SINCE,
             LAST_MODIFIED,
         },
-        HeaderMap, Response,
+        HeaderMap, Response, StatusCode,
     },
     response::IntoResponse,
 };
@@ -42,9 +42,42 @@ fn parse_range(range: &str) -> Option<Range> {
     }
     None
 }
+pub async fn handle_preview(media: &MediaItem,tbnl:bool, headers: &HeaderMap) -> Response<Body> {
+    let modified = media.time;
+    let image = match media.get_preview(tbnl) {
+        Ok(o) => o,
+        Err(e) => {
+            return Response::builder()
+                .status(500)
+                .body(Body::from(format!(
+                    "Preview Err! {}, {}",
+                    &media.path.display().to_string(),
+                    e
+                )))
+                .unwrap();
+        }
+    };
 
+    let etag = etag::EntityTag::from_data(image.as_slice());
+    let resp = Response::builder()
+        .header(CACHE_CONTROL, "public, max-age=604800")
+        .header(LAST_MODIFIED, convert_u64_to_http_date(modified).unwrap())
+        .header(ETAG, etag.to_string())
+        .header(CONTENT_TYPE, "image/webp");
+    if let Some(if_mod) = headers.get(IF_MODIFIED_SINCE) {
+        if modified <= convert_http_date_to_u64(if_mod).unwrap() {
+            if let Some(h_etag) = headers.get(ETAG) {
+                if h_etag.to_str().unwrap() == etag.to_string() {
+                    return StatusCode::NOT_MODIFIED.into_response();
+                }
+            }
+        }
+    }
+
+    return resp.status(200).body(Body::from(image)).unwrap();
+}
 // A function to handle the request
-pub async fn handle_file(media: &MediaItem, headers: &HeaderMap) -> impl IntoResponse {
+pub async fn handle_file(media: &MediaItem, headers: &HeaderMap) -> Response<Body> {
     let range = headers.get(header::RANGE);
     let modified = media.time;
     let etag = etag::EntityTag::weak(format!("{0:x}-{1:x}", media.size, media.time).as_str());

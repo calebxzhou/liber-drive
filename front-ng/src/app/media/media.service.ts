@@ -1,39 +1,43 @@
-import { HttpClient, HttpEvent, HttpEventType } from '@angular/common/http';
-import { Injectable, OnInit } from '@angular/core';
-import { Observable, filter, tap } from 'rxjs';
-import { PageService } from '../page.service';
-import { Gallery, GalleryInfo, MediaItem } from './media';
+import { HttpClient, HttpEvent, HttpEventType } from "@angular/common/http";
+import { Injectable, OnInit } from "@angular/core";
+import { BehaviorSubject, Observable, filter, tap } from "rxjs";
+import { PageService } from "../page.service";
+import { Gallery, GalleryInfo, MediaItem } from "./media";
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: "root",
 })
-export class MediaService{
-  constructor(private http: HttpClient, private page: PageService) {
+export class MediaService {
+  constructor(private http: HttpClient, private page: PageService) {}
+  private _allGalleriesInfo = new BehaviorSubject<GalleryInfo[]>([]);
+  public allGalleriesInfo$ = this._allGalleriesInfo.asObservable();
 
-  }
-  getUrl(): string{
-    return `http://${this.page.getHostName()}:7789`;
-  }
-  fetchAllGalleries(): Observable<GalleryInfo[]> {
-    return this.http.get<GalleryInfo[]>(`${this.getUrl()}/galleries`)
-  }
-  fetchGallery(id:number) :Observable< Gallery>{
-    return this.http.get<Gallery>(`${this.getUrl()}/gallery/${id}`)
-  }
-  
-  fetchImage(url: string): Observable<HttpEvent<Blob>> {
-    return this.http.get(url, { 
-      responseType: 'blob',
-      reportProgress: true,
-      observe: 'events'
+  fetchGalleryInfos(name:string) {
+    this.http.get<GalleryInfo[]>(`${this.getUrl()}/gallery_`).subscribe({
+      error: console.error,
+      next: (data) => this._allGalleriesInfo.next(data),
     });
   }
-  processGalleries(g:GalleryInfo[]): GalleryInfo[]{
+  getUrl(): string {
+    return `http://${this.page.getHostName()}:7789`;
+  }
+  fetchGallery(id: number): Observable<Gallery> {
+    return this.http.get<Gallery>(`${this.getUrl()}/gallery/${id}`);
+  }
+
+  fetchImage(url: string): Observable<HttpEvent<Blob>> {
+    return this.http.get(url, {
+      responseType: "blob",
+      reportProgress: true,
+      observe: "events",
+    });
+  }
+  processGalleries(g: GalleryInfo[]): GalleryInfo[] {
     return g
-        .filter((g) => g.size > 0)
-        .sort((g1, g2) => g1.name.localeCompare(g2.name))
-        .reverse();
-      /* let gAllPhotos: GalleryInfo = {
+      .filter((g) => g.size > 0)
+      .sort((g1, g2) => g1.name.localeCompare(g2.name))
+      .reverse();
+    /* let gAllPhotos: GalleryInfo = {
         id: -1,
         name: "全部照片",
         size: 9999999999,
@@ -53,22 +57,29 @@ export class MediaService{
       }); 
       return [gAllPhotos].concat(gAll); */
   }
-  getThumbnailUrl(id: number) :string {
+  getThumbnailUrl(id: number): string {
     return `${this.getUrl()}/preview/${id}/2`;
   }
-  getPreviewUrl(id: number) :string {
+  getPreviewUrl(id: number): string {
     return `${this.getUrl()}/preview/${id}/0`;
   }
-  getOriginalUrl(id: number) :string {
+  getOriginalUrl(id: number): string {
     return `${this.getUrl()}/media/${id}`;
   }
-  fetchPreview(id:number): Observable<Blob> {
-    return this.http.get(this.getPreviewUrl(id), { responseType: 'blob' });
+  fetchPreview(id: number): Observable<Blob> {
+    return this.http.get(this.getPreviewUrl(id), { responseType: "blob" });
   }
-  isVideo(media: MediaItem){
-    return media.name.toLocaleLowerCase().endsWith(".mp4")||media.name.toLocaleLowerCase().endsWith(".mov")
+  isVideo(media: MediaItem) {
+    return (
+      media.name.toLocaleLowerCase().endsWith(".mp4") ||
+      media.name.toLocaleLowerCase().endsWith(".mov")
+    );
   }
-  isImage(media: MediaItem){
-    return media.name.toLocaleLowerCase().endsWith(".jpg")||media.name.toLocaleLowerCase().endsWith(".png")||media.name.toLocaleLowerCase().endsWith(".heic")
+  isImage(media: MediaItem) {
+    return (
+      media.name.toLocaleLowerCase().endsWith(".jpg") ||
+      media.name.toLocaleLowerCase().endsWith(".png") ||
+      media.name.toLocaleLowerCase().endsWith(".heic")
+    );
   }
 }

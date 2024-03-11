@@ -13,12 +13,16 @@ import { trigger, state, style, transition, animate } from "@angular/animations"
   imports: [CommonModule,MatGridList,MatGridTile],
   templateUrl: "./gallery-item.component.html",
   animations: [
-    trigger('fadeInOut', [
+    trigger('scaleInOut', [
       state('void', style({
-        opacity: 0
+        opacity: 0,
+        transform: 'scale(0)'
       })),
-      transition('void <=> *', animate(300)),
-    ]),
+      transition('void <=> *', animate(300, style({
+        opacity: 1,
+        transform: 'scale(1)'
+      }))),
+    ])
   ],
 })
 export class GalleryItemComponent implements OnInit {

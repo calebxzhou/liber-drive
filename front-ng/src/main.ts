@@ -16,13 +16,15 @@ import {
   withComponentInputBinding,
 } from "@angular/router";
 import { GalleryComponent } from "./app/gallery/gallery.component";
-import { GalleryGridComponent } from "./app/gallery-grid/gallery-grid.component";
+import { GalleriesGridComponent } from "./app/galleries-grid/galleries-grid.component";
 import { MediaViewerComponent } from "./app/media-viewer/media-viewer.component";
 import { provideAnimations } from "@angular/platform-browser/animations";
+import { HomeComponent } from "./app/home/home.component";
 export const routes: Routes = [
-  { path: "", component: GalleryGridComponent },
-  { path: "gallery/:id", component: GalleryComponent },
+  { path: "home", component: HomeComponent},
+  { path: "gallery/:name", component: GalleryComponent },
   { path: "viewer/:galleryId/:startMediaId", component: MediaViewerComponent },
+  { path: '',   redirectTo: '/home', pathMatch: 'full' },
 ];
 bootstrapApplication(AppComponent, {
   providers: [

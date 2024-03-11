@@ -1,17 +1,12 @@
-use std::fs;
-use std::fs::File;
-use std::io::Read;
+use std::collections::HashMap;
+use std::fs; 
 use std::io::Write;
-use std::net::{IpAddr, Ipv6Addr, SocketAddr};
-use std::path::PathBuf;
+use std::net::{IpAddr, Ipv6Addr, SocketAddr}; 
 
 use axum::body::Body;
-use axum::extract::State;
-
-use axum::http::header::ETAG;
-use axum::http::header::IF_MODIFIED_SINCE;
-use axum::http::header::LAST_MODIFIED;
-use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE};
+ 
+use axum::extract::{Path, Query, State};
+use axum::http::header::CONTENT_TYPE;
 
 use axum::http::Extensions;
 use axum::http::HeaderMap;
@@ -30,16 +25,15 @@ use env_logger::Builder;
 
 use log::info;
 use log::LevelFilter;
-use media_item::GalleryInfo;
 use media_sender::handle_file;
-use tower_http::cors::CorsLayer;
-use util::convert_http_date_to_u64;
-use util::convert_u64_to_http_date;
+use media_sender::handle_preview;
+use tower_http::cors::CorsLayer; 
 
 use crate::main_service::MainService;
 use tower_http::compression::CompressionLayer;
+pub mod image_exif;
 pub mod main_service;
- mod media_item;
+mod media_item;
 pub mod media_sender;
 mod test;
 mod util;
@@ -58,58 +52,45 @@ fn logger_init() {
         .filter(None, LevelFilter::Info)
         .init();
 }
-//载入工作目录
-fn load_drive_dir() -> PathBuf {
-    let path = std::path::Path::new("./drive_dir.txt");
-    let mut file = if path.exists() {
-        File::open(path).unwrap()
-    } else {
-        let mut file = File::create(path).unwrap();
-        let _ = file.write_all(b".");
-        file
-    };
-    let mut contents = String::new();
-    let _dir = file.read_to_string(&mut contents).unwrap();
-    contents = contents.trim().to_owned();
-    info!("工作目录：{}", contents);
-    let dir = PathBuf::from(contents).canonicalize().unwrap();
-    info!("工作目录：{}", dir.display().to_string());
-    dir
-}
+
 #[tokio::main]
 async fn main() {
     logger_init();
     fs::create_dir_all("cache").expect("创建缓存目录失败");
-    let drive_dir = load_drive_dir();
-    let compression_layer = CompressionLayer::new()
-        .br(true)
-        .compress_when(
-            |_status: axum::http::StatusCode,
-             _version: axum::http::Version,
-             headers: &HeaderMap,
-             _extensions: &Extensions| { 
-
-                //只压缩json和普通文本
-                if let Some(content_type) = headers.get(CONTENT_TYPE) {
-                    let content_type = content_type.to_str().unwrap_or_default();
-                    if content_type == "application/json" {
-                        true
-                    }else {
-                        false
-                    }
-                }else{
+    let drive_dir = util::load_drive_dir();
+    let compression_layer = CompressionLayer::new().br(true).compress_when(
+        |_status: axum::http::StatusCode,
+         _version: axum::http::Version,
+         headers: &HeaderMap,
+         _extensions: &Extensions| {
+            //只压缩json和普通文本
+            if let Some(content_type) = headers.get(CONTENT_TYPE) {
+                let content_type = content_type.to_str().unwrap_or_default();
+                if content_type == "application/json" {
+                    true
+                } else {
                     false
                 }
-            },
-        );
+            } else {
+                false
+            }
+        },
+    );
     let serv = Box::new(MainService::new(&drive_dir));
     let serv: &'static MainService = Box::leak(serv);
     let app = Router::new()
-        .route("/galleries", get(get_all_galleries).with_state(serv))
-        .route("/gallery/:id", get(get_gallery).with_state(serv))
-        .route("/preview/:id/:level", get(get_preview).with_state(serv))
-        .route("/media/:id", get(get_media).with_state(serv))
-        .route("/exif/:id", get(get_exif).with_state(serv))
+    //读取照片视频
+        .route(
+            "/gallery/:galleryName/:albumName/:mediaName",
+            get(get_media).with_state(serv),
+        )
+        //读取album
+        .route(
+            "/gallery/:galleryName/:albumName",
+            get(get_album).with_state(serv),
+        )
+        //读取gallery
+        .route("/gallery/:name", get(get_gallery).with_state(serv))
         .layer(compression_layer)
         .layer(
             CorsLayer::new()
@@ -118,87 +99,69 @@ async fn main() {
                 .allow_headers(vec![CONTENT_TYPE]),
         );
 
-    // run our app with hyper, listening globally on port 3000
     let listener =
         tokio::net::TcpListener::bind(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789))
             .await
             .unwrap();
     axum::serve(listener, app).await.unwrap();
 }
-//获取所有相册信息
-async fn get_all_galleries(State(serv): State<&MainService>) -> Json<Vec<GalleryInfo>> {
-    Json(serv.galleries_info.to_vec())
-}
-//获取单个相册
-async fn get_gallery(
-    axum::extract::Path(id): axum::extract::Path<u32>,
-    State(serv): State<&MainService>,
-) -> impl IntoResponse {
-    match serv.galleries.get(&id) {
-        Some(g) => Json(g).into_response(),
-        None => StatusCode::NOT_FOUND.into_response(),
-    }
-}
-//获取exif信息
-async fn get_exif(
-    axum::extract::Path(id): axum::extract::Path<u32>,
-    State(serv): State<&MainService>,
-) -> impl IntoResponse {
-    match serv.medias.get(&id) {
-        Some(media) => match &media.exif {
-            Some(exif) => Json(exif.clone()).into_response(),
-            None => StatusCode::NOT_FOUND.into_response(),
-        },
-        None => StatusCode::NOT_FOUND.into_response(),
-    }
-}
-//获取webp预览/缩略图
-async fn get_preview(
-    headers: HeaderMap,
-    axum::extract::Path((id, level)): axum::extract::Path<(u32, u8)>,
-    State(serv): State<&MainService>,
-) -> impl IntoResponse {
-    let media = serv.medias.get(&id).expect("media !exists");
-    let modified = media.time;
-
-    let image = match media.get_preview(if level == 2 {true} else { false}) {
-        Ok(o) => o,
-        Err(e) => {
-            return Response::builder()
-                .status(500)
-                .body(Body::from(format!(
-                    "Preview Err! {}, {}",
-                    &media.path.display().to_string(),
-                    e
-                )))
-                .unwrap();
+macro_rules! match_or_404 {
+    ($match:expr) => {
+        match $match {
+            Some(item) => item,
+            None => return StatusCode::NOT_FOUND.into_response(),
         }
     };
-
-    let etag = etag::EntityTag::from_data(image.as_slice());
-    let resp = Response::builder()
-        .header(CACHE_CONTROL, "public, max-age=3600")
-        .header(LAST_MODIFIED, convert_u64_to_http_date(modified).unwrap())
-        .header(ETAG, etag.to_string())
-        .header(CONTENT_TYPE, "image/webp");
-    /* if let Some(if_mod) = headers.get(IF_MODIFIED_SINCE) {
-        if modified <= convert_http_date_to_u64(if_mod).unwrap() {
-            if let Some(h_etag) = headers.get(ETAG) {
-                if h_etag.to_str().unwrap() == etag.to_string() {
-                    return resp.status(304).body(Body::from(image)).unwrap();
-                }
-            }
+}
+//获取相册
+async fn get_gallery(
+    Path(name): Path<String>,
+    State(serv): State<&MainService>,
+) -> impl IntoResponse {
+    let g = match_or_404!(serv.galleries.get(&name));
+    Json(g).into_response()
+}
+//获取影集
+async fn get_album(
+    Path((gallery_name, album_name)): Path<(String, String)>,
+    Query(params): Query<HashMap<String, String>>,
+    State(serv): State<&MainService>,
+) -> impl IntoResponse {
+    let gallery = match_or_404!(serv.galleries.get(&gallery_name));
+    let album = match_or_404!(gallery.albums.get(&album_name));
+    //请求缩略图，返回第一张的名字
+    if params.contains_key("tbnl"){
+        if let Some(first) = album.medias.iter().next(){
+            return  first.0.clone().into_response();
         }
-    } */
-    resp.status(200).body(Body::from(image)).unwrap()
+    }
+    Json(album).into_response()
 }
 async fn get_media(
     headers: HeaderMap,
-    axum::extract::Path(id): axum::extract::Path<u32>,
+    Path((gallery_name, album_name, media_name)): Path<(
+        String,
+        String,
+        String,
+    )>,
+    Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
-) -> impl IntoResponse {
-    let media = serv.medias.get(&id).expect("media !exists");
+) -> Response<Body> {
+    let gallery = match_or_404!(serv.galleries.get(&gallery_name));
+    let album = match_or_404!(gallery.albums.get(&album_name));
+    let media = match_or_404!(album.medias.get(&media_name));
 
-    handle_file(media, &headers).await
+
+    //读取摄影参数
+    if params.contains_key("exif") {
+        let exif = match_or_404!(&media.exif);
+        return Json(exif.clone()).into_response();
+    }
+
+    //读取预览
+    if let Some(level) = params.get("tbnl") {
+        return handle_preview(media, if level == "1" { true } else { false }, &headers).await;
+    }
+
+    return handle_file(media, &headers).await;
 }
- 

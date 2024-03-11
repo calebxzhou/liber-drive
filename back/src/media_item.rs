@@ -1,45 +1,42 @@
-use std::fs::File;
-use std::io::{BufReader, Cursor, Read};
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::io::{Cursor, Read};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{fmt, fs, path::PathBuf, time::UNIX_EPOCH};
 
-use exif::{In, Tag};
 use image::imageops::FilterType;
-use image::DynamicImage; 
+use image::DynamicImage;
 use serde::Serialize;
-use webp::WebPMemory; 
- 
-use crate::util::{human_readable_size, AnyError, ResultAnyErr}; 
- 
+use webp::WebPMemory;
+
+use crate::image_exif::ImageExif;
+use crate::util::{human_readable_size, AnyError, ResultAnyErr};
+
+//图片/视频
 #[derive(Serialize, Clone)]
 pub struct MediaItem {
-    pub id: u32,
+    pub name: String,
     #[serde(skip_serializing)]
     pub path: PathBuf,
-    pub name: String,
     pub time: u64,
     pub size: u64,
+    #[serde(skip_serializing)]
     pub exif: Option<ImageExif>,
 }
 
 impl MediaItem {
-    pub fn new(
-        id: u32,
-        path: PathBuf,
-        name: String,
-        time: u64,
-        size: u64,
-        exif: Option<ImageExif>,
-    ) -> Self {
+    pub fn new(path: PathBuf, name: String, time: u64, size: u64, exif: Option<ImageExif>) -> Self {
         Self {
-            id,
             path,
             name,
             time,
             size,
             exif,
         }
+    }
+    pub fn get_extension(&self) -> String{
+        self.path.extension().unwrap_or(OsStr::new("")).to_ascii_lowercase().to_string_lossy().into_owned()
     }
     //预览路径
     pub fn get_preview_path(&self, thumbnail: bool) -> PathBuf {
@@ -51,7 +48,7 @@ impl MediaItem {
         ))
     }
     //是否已创建预览 小图+大图
-    pub fn is_preview_created(&self,thumbnail:bool) -> bool {
+    pub fn is_preview_created(&self, thumbnail: bool) -> bool {
         self.get_preview_path(thumbnail).exists()
     }
     //获取预览
@@ -81,13 +78,8 @@ impl MediaItem {
         //缩略图
         let webp_mem = compress_image_webp(&image, thumbnail)?.to_vec();
         //保存 缓存
-        fs::write(&self.get_preview_path(thumbnail), &webp_mem)?; 
+        fs::write(&self.get_preview_path(thumbnail), &webp_mem)?;
         Ok(())
-    }
-}
-impl fmt::Display for MediaItem {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "[{}] {}", self.id, self.path.display())
     }
 }
 //压缩图片为webp格式
@@ -137,106 +129,10 @@ pub fn get_file_created_time(path: &PathBuf) -> std::result::Result<u64, AnyErro
         .as_secs();
     Ok(time)
 }
-
-//照片摄影参数
-#[derive(Serialize, Clone)]
-pub struct ImageExif {
-    //相机
-    pub make: String,
-    //镜头
-    pub lens: String,
-    //档位
-    pub xp_prog: char,
-    //焦距
-    pub focal_len: String,
-    //光圈
-    pub av: String,
-    //快门
-    pub tv: String,
-    //ISO
-    pub iso: String,
-    //拍摄时间
-    pub shot_time: String,
+pub fn get_file_size(path: &PathBuf) -> ResultAnyErr<u64> {
+    let meta = fs::metadata(&path)?;
+    Ok(meta.len())
 }
-impl ImageExif {
-    pub fn new(
-        make: String,
-        lens: String,
-        xp_prog: char,
-        focal_len: String,
-        av: String,
-        tv: String,
-        iso: String,
-        shot_time: String,
-    ) -> Self {
-        Self {
-            make,
-            lens,
-            xp_prog,
-            focal_len,
-            av,
-            tv,
-            iso,
-            shot_time,
-        }
-    }
-
-    pub fn get_field_value(exif: &exif::Exif, tag: Tag) -> String {
-        match exif.get_field(tag, In::PRIMARY) {
-            None => "".to_owned(),
-            Some(field) => format!("{}", field.display_value()),
-        }
-    }
-
-    //exif字段
-    fn get_exif_field(exif: &exif::Exif, tag: Tag) -> String {
-        ImageExif::get_field_value(exif, tag)
-            .replace(['\"', ','], "")
-            .trim()
-            .to_owned()
-    }
-
-    pub fn from_media_path(media_path: &PathBuf) -> ResultAnyErr<ImageExif> {
-        let file = File::open(media_path)?;
-        let mut bufreader = BufReader::new(&file);
-
-        let exifreader = exif::Reader::new();
-        let exif = exifreader.read_from_container(&mut bufreader)?;
-
-        //相机厂商
-        let make = Self::get_exif_field(&exif, Tag::Make);
-        //相机型号
-        let model = Self::get_exif_field(&exif, Tag::Model)
-            //型号里包含厂商 则去除
-            .replace(&make, "");
-        let make = format!("{} {}", make, model);
-        //快门时间
-        let tv = Self::get_exif_field(&exif, Tag::ExposureTime);
-        //档位 只保留第一个字母
-        let xp_prog = Self::get_exif_field(&exif, Tag::ExposureProgram)
-            .chars()
-            .next()
-            .unwrap_or(' ')
-            .to_ascii_uppercase();
-        let av = Self::get_exif_field(&exif, Tag::FNumber);
-        //镜头
-        let lens_make = Self::get_exif_field(&exif, Tag::LensMake);
-        let lens_model = Self::get_exif_field(&exif, Tag::LensModel);
-        let lens = if lens_model.contains("| Art") {
-            format!("Sigma {} {}", lens_make, lens_model)
-        } else {
-            format!("{} {}", lens_make, lens_model)
-        };
-
-        let shot_time = Self::get_exif_field(&exif, Tag::DateTimeOriginal);
-        let focal_len = Self::get_exif_field(&exif, Tag::FocalLength);
-        let iso = Self::get_exif_field(&exif, Tag::PhotographicSensitivity);
-        let exif: ImageExif =
-            ImageExif::new(make, lens, xp_prog, focal_len, av, tv, iso, shot_time);
-        Ok(exif)
-    }
-}
-
 //读取视频第一帧
 pub fn get_video_first_frame(video_path: &String) -> Result<DynamicImage, AnyError> {
     let mut ffmpeg_output = Command::new("ffmpeg")
@@ -264,24 +160,58 @@ pub fn get_video_first_frame(video_path: &String) -> Result<DynamicImage, AnyErr
 }
 
 //相册
-#[derive(Serialize)]
+#[derive(Serialize,Clone)]
 pub struct Gallery {
-    pub id: u32,
     pub name: String,
     pub size: u64,
-    pub medias: Vec<MediaItem>,
+    //下属影集
+    pub albums: HashMap<String, Album>,
 }
 impl Gallery {
-    pub fn new(id: u32, name: String, size: u64, medias: Vec<MediaItem>) -> Self {
+    pub fn new(name: String, size: u64, albums: HashMap<String, Album>) -> Self {
+        Self { name, size, albums }
+    }
+}
+impl fmt::Display for Gallery {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {}x {}",
+            self.name,
+            self.albums.len(),
+            human_readable_size(self.size)
+        )
+    }
+}
+
+//影集
+#[derive(Serialize,Clone)]
+pub struct Album {
+    pub name: String,
+    pub size: u64,
+    //照片数量
+    pub media_amount: u32,
+    #[serde(skip_serializing)]
+    //所有照片 key=name
+    pub medias: HashMap<String, MediaItem>,
+}
+impl Album {
+    pub fn new(
+        name: String,
+        size: u64,
+        media_amount: u32,
+        medias: HashMap<String, MediaItem>,
+    ) -> Self {
         Self {
-            id,
             name,
             size,
+            media_amount,
             medias,
         }
     }
+
     //封面图片ID
-    pub fn get_cover_media_id(&self) -> u32 {
+    /* pub fn get_cover_media_id(&self) -> u32 {
         self.medias
             .iter()
             .map(|m| m.id)
@@ -289,27 +219,16 @@ impl Gallery {
             .get(0)
             .unwrap_or(&0)
             .clone()
-    }
+    } */
 }
-impl fmt::Display for Gallery {
+impl fmt::Display for Album {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "[{}] {} {}x {}",
-            self.id,
+            "{} {}x {}",
             self.name,
             self.medias.len(),
             human_readable_size(self.size)
         )
     }
 }
-#[derive(Serialize, Clone)]
-pub struct GalleryInfo {
-    pub id: u32,
-    pub name: String,
-    pub size: u64,
-    pub media_amount: u32,
-    //预览图1张
-    pub tbnl_media_id: u32,
-} 
- 

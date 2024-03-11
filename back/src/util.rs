@@ -1,6 +1,9 @@
 
+use std::{fs::File, io::{Read, Write}, path::PathBuf};
+
 use axum::http::HeaderValue;
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};  
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use log::info;  
 
 pub type AnyError = Box<dyn std::error::Error>;
 pub type ResultAnyErr<T> = Result<T,AnyError>;
@@ -58,4 +61,22 @@ pub fn filename_to_timestamp(filename: &str) -> Result<u64,AnyError> {
 
     // Parse the date and time string
     Ok(NaiveDateTime::parse_from_str(&datetime_str, "%Y%m%d%H%M%S")?.timestamp().try_into()?)
+}
+//载入工作目录
+pub fn load_drive_dir() -> PathBuf {
+    let path = std::path::Path::new("./drive_dir.txt");
+    let mut file = if path.exists() {
+        File::open(path).unwrap()
+    } else {
+        let mut file = File::create(path).unwrap();
+        let _ = file.write_all(b".");
+        file
+    };
+    let mut contents = String::new();
+    let _dir = file.read_to_string(&mut contents).unwrap();
+    contents = contents.trim().to_owned();
+    info!("工作目录：{}", contents);
+    let dir = PathBuf::from(contents).canonicalize().unwrap();
+    info!("工作目录：{}", dir.display().to_string());
+    dir
 }

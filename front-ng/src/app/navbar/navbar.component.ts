@@ -1,28 +1,23 @@
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, NavigationEnd, Router, RouterModule } from '@angular/router';
-import { PageService } from '../page.service';
+import { Component } from "@angular/core";
+import { MatButtonModule } from "@angular/material/button";
+import { MatToolbarModule } from "@angular/material/toolbar";
 
 @Component({
-  selector: 'navbar',
-  providers: [],
-  standalone:true,
-  templateUrl: './navbar.component.html',
-})
-export class NavbarComponent implements OnInit{
-
-  title:string='';
-	constructor(private page:PageService) {
-    
-	}
-  ngOnInit(): void {
-    this.page.path$.subscribe((newPath) => {
-     this.title=this.page.getPathUrl().replaceAll("/",">");
-     
-  });
-  }
-  
-  goBack(){
-    this.page.goPrevPath();
-  }
-
+  selector: "lg-navbar",
+  standalone: true,
+  imports: [MatToolbarModule, MatButtonModule],
+  templateUrl: "./navbar.component.html",
+  styles: `
+  .mat-toolbar {
+  color: white;
 }
+.mat-button {
+  color: white;
+}
+.spacer {
+  flex: 1 1 auto;
+}
+
+  `,
+})
+export class NavbarComponent {}

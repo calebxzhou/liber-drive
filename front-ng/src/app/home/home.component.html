@@ -1,0 +1,31 @@
+<div
+  class="absolute top-1/4 inset-x-0 mx-auto w-max justify-center items-center"
+>
+  <div
+    class="relative w-16 inset-x-0 mx-auto flex items-center justify-center hover:bg-gray-200 cursor-pointer"
+    (click)="goGallery('__all')"
+  >
+    <img class="w-16" src="assets/avatar.webp" />
+    <img class="w-7 absolute bottom-0 right-0" src="assets/camera.svg" />
+  </div>
+  <div class="flex items-center justify-center m-2">
+    <span class="text-2xs">选择相册</span>
+  </div>
+  <div class="mt-6 flex justify-center gap-4">
+    <div
+      class="flex flex-col items-center bg-transparent hover:bg-gray-200 cursor-pointer"
+      (click)="goGallery('situ')"
+    >
+      <img class="w-20" src="assets/situ.svg" />
+      <span class="text-xs">situ活动</span>
+    </div>
+    <div
+      class="flex flex-col items-center bg-transparent hover:bg-gray-200 cursor-pointer"
+      (click)="goGallery('life')"
+    >
+      <img class="w-20" src="assets/life.svg" />
+      <span class="text-xs">日常生活</span>
+    </div>
+  </div>
+</div>
+<div class="absolute bottom-0 inset-x-0 mx-auto w-max">v2.1&emsp;2024.3.12</div>
