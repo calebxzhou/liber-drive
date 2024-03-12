@@ -7,7 +7,7 @@ import {
   OnInit,
   Output,
 } from "@angular/core";
-import { MediaItem, ImageExif, Gallery } from "../media/media";
+import { Media, ImageExif, GalleryInfo } from "../media/media";
 import { MediaService } from "../media/media.service";
 import { toReadableSize } from "../util";
 import { Title } from "@angular/platform-browser";
@@ -25,13 +25,13 @@ import { animate, state, style, transition, trigger } from "@angular/animations"
 })
 export class MediaViewerComponent implements OnInit {
   //整个相册
-  gallery!: Gallery;
+  gallery!: GalleryInfo;
   //刚载入的时候 显示哪个图（ID）
   index = 0;
   //所有图片
-  medias: MediaItem[] = [];
+  medias: Media[] = [];
   //现在图片
-  now!: MediaItem;
+  now!: Media;
   //尺寸（载入原图用）
   fullImageSize = "0.0MB";
   //标题
@@ -44,7 +44,6 @@ export class MediaViewerComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private mediaService: MediaService,
-    private titleService: Title,
     private snackBar: MatSnackBar
   ) {}
   @HostListener("window:keydown", ["$event"])
@@ -73,12 +72,12 @@ export class MediaViewerComponent implements OnInit {
       let smid = params.get("startMediaId");
       let gid = params.get("galleryId");
       if (smid && gid) {
-        this.mediaService.fetchGallery(+gid).subscribe((gallery) => {
+        /* this.mediaService.fetchGallery(+gid).subscribe((gallery) => {
           this.gallery = gallery;
           this.medias = gallery.medias.sort((a, b) => a.time - b.time);
           this.index = gallery.medias.findIndex((m) => m.id === +(smid ?? "0"));
           this.update();
-        });
+        }); */
       }
     });
   }
@@ -89,16 +88,16 @@ export class MediaViewerComponent implements OnInit {
     this.displayingUrl = LOADING_GIF;
     this.isOriginalLoaded = false;
     this.now = this.medias[this.index];
-    if (this.isImageNow()) this.displayingUrl = this.preview();
+   /*  if (this.isImageNow()) this.displayingUrl = this.preview();
     if (this.isVideoNow()) this.displayingUrl = this.full();
-
+ */
     this.fullImageSize = toReadableSize(this.now.size);
     let title = `${this.now.name}`;
-    let exif = this.now.exif;
+    /* let exif = this.now.exif;
     if (exif) {
       title += `⏰${exif.shot_time}📷${exif.make}🔭${exif.lens}📐${exif.focal_len}mm📸${exif.xp_prog}挡👁️F${exif.av}⏱${exif.tv}s@ISO${exif.iso}
       `;
-    }
+    } */
     this.title = title;
   }
   prev() {
@@ -110,13 +109,13 @@ export class MediaViewerComponent implements OnInit {
     this.update();
   }
   preview() {
-    return this.mediaService.getPreviewUrl(this.now.id);
+    //return this.mediaService.getPreviewUrl(this.now.id);
   }
   full() {
-    return this.mediaService.getOriginalUrl(this.now.id);
+    //return this.mediaService.getOriginalUrl(this.now.id);
   }
   loadOriginal() {
-    let t1 = Date.now();
+    /* let t1 = Date.now();
     this.mediaService
       .fetchImage(this.full())
       .subscribe((event: HttpEvent<any>) => {
@@ -136,7 +135,7 @@ export class MediaViewerComponent implements OnInit {
             }
           );
         }
-      });
+      }); */
   }
   isImageNow() {
     return this.mediaService.isImage(this.now);

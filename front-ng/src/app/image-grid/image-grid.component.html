@@ -1,0 +1,21 @@
+
+  <ng-container *ngFor="let group of groupMediaByDay(this.medias) | keyvalue">
+    <span class="text-xl m-6">{{group.key}}</span>
+    <div class="img-grid">
+    <div class="relative" *ngFor="let media of group.value">
+      
+      <img 
+        class="w-36 h-32 object-cover object-center relative"
+        [src]="thumbnailUrl(media)"
+      />
+      @if (isVideo(media)) {
+      <div
+        class="absolute bottom-2 left-2 w-1/2 text-white bg-black text-2xs rounded-3xl"
+      >
+        ▶️{{ size(media) }}
+      </div>
+      }
+    </div>
+  </div>
+  </ng-container>
+

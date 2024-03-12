@@ -1,85 +1,73 @@
 import { HttpClient, HttpEvent, HttpEventType } from "@angular/common/http";
 import { Injectable, OnInit } from "@angular/core";
-import { BehaviorSubject, Observable, filter, tap } from "rxjs";
+import { BehaviorSubject, Observable, filter, switchMap, tap } from "rxjs";
 import { PageService } from "../page.service";
-import { Gallery, GalleryInfo, MediaItem } from "./media";
+import { GalleryInfo, Album, Media, AlbumInfo, DefaultGallery, DefaultAlbum } from "./media";
 
 @Injectable({
   providedIn: "root",
 })
 export class MediaService {
-  constructor(private http: HttpClient, private page: PageService) {}
-  private _allGalleriesInfo = new BehaviorSubject<GalleryInfo[]>([]);
-  public allGalleriesInfo$ = this._allGalleriesInfo.asObservable();
+  
+  constructor(private http: HttpClient, private page: PageService) {} 
 
-  fetchGalleryInfos(name:string) {
-    this.http.get<GalleryInfo[]>(`${this.getUrl()}/gallery_`).subscribe({
-      error: console.error,
-      next: (data) => this._allGalleriesInfo.next(data),
-    });
+  fetchGallery(name:string) :Observable<GalleryInfo>{
+    return this.http.get<GalleryInfo>(`${this.getUrl()}/gallery/${name}`);
+  }
+  fetchAlbum(galleryName:string,albumName:string){
+    return this.http.get<Album>(`${this.getUrl()}/gallery/${galleryName}/${albumName}`)
   }
   getUrl(): string {
     return `http://${this.page.getHostName()}:7789`;
   }
-  fetchGallery(id: number): Observable<Gallery> {
-    return this.http.get<Gallery>(`${this.getUrl()}/gallery/${id}`);
+  fetchMediaUrl(galleryName: string,albumName:string,mediaName:string,tbnl: number){
+    return `${this.getUrl()}/gallery/${galleryName}/${albumName}/${mediaName}${tbnl>-1?`?tbnl=${tbnl}`:''}`
   }
-
-  fetchImage(url: string): Observable<HttpEvent<Blob>> {
-    return this.http.get(url, {
+  //tbnl：预览 -1原图 0大图 1小图
+  fetchMedia(galleryName: string,albumName:string,mediaName:string,tbnl: number): Observable<HttpEvent<Blob>> {
+    return this.http.get(this.fetchMediaUrl(galleryName,albumName,mediaName,tbnl), {
       responseType: "blob",
       reportProgress: true,
       observe: "events",
     });
   }
-  processGalleries(g: GalleryInfo[]): GalleryInfo[] {
-    return g
-      .filter((g) => g.size > 0)
-      .sort((g1, g2) => g1.name.localeCompare(g2.name))
-      .reverse();
-    /* let gAllPhotos: GalleryInfo = {
-        id: -1,
-        name: "全部照片",
-        size: 9999999999,
-        media_amount: 99999
-        tbnl_media_ids: [],
-      };
-
-      // Loop through the Gallery array and accumulate the size and medias
-      gAll.forEach((gallery) => {
-        // Add the size of each gallery to the total size
-        gAllPhotos.size += gallery.size;
-
-        // Loop through the medias map of each gallery
-        for (let media of gallery.medias) {
-          gAllPhotos.medias.push(media);
-        }
-      }); 
-      return [gAllPhotos].concat(gAll); */
+  getAlbumTbnl(galleryName: string, albumName: string): Observable<HttpEvent<Blob>> {
+    return this.http.get(`${this.getUrl()}/gallery/${galleryName}/${albumName}?tbnl=1`, { responseType: 'text' }).pipe(
+      switchMap(tbnlName => {
+        // Assuming tbnlName is the name of the media file you want to fetch
+        return this.fetchMedia(galleryName, albumName, tbnlName, 1);
+      })
+    );
   }
-  getThumbnailUrl(id: number): string {
-    return `${this.getUrl()}/preview/${id}/2`;
-  }
-  getPreviewUrl(id: number): string {
-    return `${this.getUrl()}/preview/${id}/0`;
-  }
-  getOriginalUrl(id: number): string {
-    return `${this.getUrl()}/media/${id}`;
-  }
-  fetchPreview(id: number): Observable<Blob> {
-    return this.http.get(this.getPreviewUrl(id), { responseType: "blob" });
-  }
-  isVideo(media: MediaItem) {
+  isVideo(media: Media) {
     return (
       media.name.toLocaleLowerCase().endsWith(".mp4") ||
       media.name.toLocaleLowerCase().endsWith(".mov")
     );
   }
-  isImage(media: MediaItem) {
+  isImage(media: Media) {
     return (
       media.name.toLocaleLowerCase().endsWith(".jpg") ||
       media.name.toLocaleLowerCase().endsWith(".png") ||
       media.name.toLocaleLowerCase().endsWith(".heic")
     );
   }
+  groupMediaByDay(mediaArray: Media[]): Record<string, Media[]> {
+    const grouped: Record<string, Media[]> = {};
+
+    mediaArray.forEach((media) => {
+        // Convert Unix timestamp to a date string (YYYY-MM-DD)
+        const date = new Date(media.time * 1000).toISOString().split('T')[0];
+
+        // If the date isn't in the grouped object, initialize it with an empty array
+        if (!grouped[date]) {
+            grouped[date] = [];
+        }
+
+        // Push the current media object to the array for the date
+        grouped[date].push(media);
+    });
+
+    return grouped;
+}
 }

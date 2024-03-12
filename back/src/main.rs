@@ -22,9 +22,9 @@ use axum::{response::IntoResponse, routing::get};
 use chrono::Local;
 
 use env_logger::Builder;
-
-use log::info;
+ 
 use log::LevelFilter;
+use media_item::GalleryInfo;
 use media_sender::handle_file;
 use media_sender::handle_preview;
 use tower_http::cors::CorsLayer; 
@@ -118,7 +118,7 @@ async fn get_gallery(
     Path(name): Path<String>,
     State(serv): State<&MainService>,
 ) -> impl IntoResponse {
-    let g = match_or_404!(serv.galleries.get(&name));
+    let g = match_or_404!(serv.galleries_info.get(&name));
     Json(g).into_response()
 }
 //获取影集

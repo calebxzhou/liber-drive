@@ -5,14 +5,14 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { BrowserModule } from '@angular/platform-browser';
 import { CommonModule } from '@angular/common';
-import { GalleriesGridComponent } from './galleries-grid/galleries-grid.component';
+import { AlbumGridComponent } from './album-grid/album-grid.component';
 import { NavbarComponent } from "./navbar/navbar.component";
 @Component({
     selector: 'app-root',
     templateUrl: './app.component.html',
     standalone: true,
     imports: [
-        RouterModule, GalleriesGridComponent, RouterOutlet, RouterLink, RouterLinkActive,
+        RouterModule, AlbumGridComponent, RouterOutlet, RouterLink, RouterLinkActive,
         NavbarComponent
     ]
 })

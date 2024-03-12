@@ -6,28 +6,47 @@ use std::fs::{self, DirEntry};
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
-use crate::media_item::{self, Album, Gallery, MediaItem};
+use crate::media_item::{self, Album, AlbumInfo, Gallery, GalleryInfo, MediaItem};
 
 pub struct MainService {
     pub galleries: HashMap<String, Gallery>,
+    pub galleries_info: HashMap<String, GalleryInfo>,
 }
 impl MainService {
     pub fn new(drive_dir: &PathBuf) -> Self {
         let galleries = Self::scan_all_galleries(drive_dir).expect("扫描相册错误！");
         info!("共{}个相册", galleries.len());
-
-        Self { galleries }
+        let galleries_info: HashMap<String, GalleryInfo> = galleries
+            .iter()
+            .map(|(key, gallery)| {
+                let album_infos: Vec<AlbumInfo> = gallery
+                    .albums
+                    .iter()
+                    .map(|(_, album)| AlbumInfo::from_album(album))
+                    .collect();
+                (
+                    key.clone(),
+                    GalleryInfo {
+                        name: gallery.name.clone(),
+                        size: gallery.size,
+                        albums: album_infos,
+                    },
+                )
+            })
+            .collect();
+        Self { galleries ,galleries_info}
     }
     //所有相册
     fn scan_all_galleries(drive_dir: &PathBuf) -> ResultAnyErr<HashMap<String, Gallery>> {
         let mut all_galleries = HashMap::new();
         //扫描每个相册
-        for entry in fs::read_dir(drive_dir)?
-            .filter(|e| e.as_ref().unwrap().file_type().unwrap().is_dir()) {
+        for entry in
+            fs::read_dir(drive_dir)?.filter(|e| e.as_ref().unwrap().file_type().unwrap().is_dir())
+        {
             let entry = entry.expect("扫描目录错误！");
             let gallery = Self::scan_single_gallery(&entry).unwrap();
             if gallery.albums.len() == 0 {
-                debug!("跳过空gallery: {}",gallery);
+                debug!("跳过空gallery: {}", gallery);
                 continue;
             }
             info!("{}", gallery);
@@ -42,14 +61,14 @@ impl MainService {
         let mut gallery_albums = HashMap::new();
         //扫描下属影集
         for album_entry in fs::read_dir(entry.path())? {
-            let album_entry = album_entry?; 
+            let album_entry = album_entry?;
             //album必须是目录
-            if album_entry.file_type()?.is_file(){
+            if album_entry.file_type()?.is_file() {
                 continue;
             }
             let album = Self::scan_single_album(&album_entry)?;
-            if album.media_amount == 0 {
-                debug!("跳过空album: {}",album);
+            if album.medias.len() == 0 {
+                debug!("跳过空album: {}", album);
                 continue;
             }
             gallery_albums.insert(album.name.clone(), album.clone());
@@ -101,14 +120,16 @@ impl MainService {
             } else {
                 None
             };
-            album_medias.insert(name.clone(), MediaItem::new(path, name.clone(), time, size, exif));
+            album_medias.insert(
+                name.clone(),
+                MediaItem::new(path, name.clone(), time, size, exif),
+            );
             //累计相册尺寸
             album_size += size;
         }
         Ok(Album::new(
             album_entry.file_name().to_string_lossy().into_owned(),
             album_size,
-            album_medias.len() as u32,
             album_medias,
         ))
     }

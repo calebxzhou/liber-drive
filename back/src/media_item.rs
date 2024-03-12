@@ -7,7 +7,7 @@ use std::{fmt, fs, path::PathBuf, time::UNIX_EPOCH};
 
 use image::imageops::FilterType;
 use image::DynamicImage;
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use webp::WebPMemory;
 
 use crate::image_exif::ImageExif;
@@ -164,12 +164,27 @@ pub fn get_video_first_frame(video_path: &String) -> Result<DynamicImage, AnyErr
 pub struct Gallery {
     pub name: String,
     pub size: u64,
-    //下属影集
     pub albums: HashMap<String, Album>,
+}
+#[derive(Serialize,Clone)]
+pub struct GalleryInfo{
+    pub name: String,
+    pub size: u64,
+    pub albums: Vec<AlbumInfo>,
 }
 impl Gallery {
     pub fn new(name: String, size: u64, albums: HashMap<String, Album>) -> Self {
         Self { name, size, albums }
+    }
+}
+impl GalleryInfo {
+    pub fn from_gallery(gallery: &Gallery) -> Self{
+        let albums: Vec<AlbumInfo> = gallery.albums.values().map(|a|AlbumInfo::from_album(a)).collect();
+        GalleryInfo{
+            name: gallery.name.clone(),
+            size: gallery.size,
+            albums
+        }
     }
 }
 impl fmt::Display for Gallery {
@@ -189,23 +204,32 @@ impl fmt::Display for Gallery {
 pub struct Album {
     pub name: String,
     pub size: u64,
-    //照片数量
-    pub media_amount: u32,
-    #[serde(skip_serializing)]
-    //所有照片 key=name
     pub medias: HashMap<String, MediaItem>,
+}
+#[derive(Serialize,Clone)]
+pub struct AlbumInfo {
+    pub name: String,
+    pub size: u64,
+    pub media_amount: u32
+}
+impl AlbumInfo {
+    pub fn from_album(album: &Album) -> Self{
+        AlbumInfo{
+            name: album.name.clone(),
+            size: album.size,
+            media_amount: album.medias.len() as u32
+        }
+    }
 }
 impl Album {
     pub fn new(
         name: String,
         size: u64,
-        media_amount: u32,
         medias: HashMap<String, MediaItem>,
     ) -> Self {
         Self {
             name,
             size,
-            media_amount,
             medias,
         }
     }
