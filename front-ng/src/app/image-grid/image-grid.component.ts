@@ -1,38 +1,44 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, Input, OnInit, ViewChild } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MediaService } from '../media/media.service';
 import { Media } from '../media/media';
 import { toReadableSize } from '../util';
+import { ImageTbnlComponent } from '../image-tbnl/image-tbnl.component';
+import { MAX_TBNL_SIDELEN, MIN_TBNL_SIDELEN } from '../const';
 
 @Component({
   selector: 'lg-image-grid',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule,ImageTbnlComponent],
   templateUrl: './image-grid.component.html',
-  styles: `
-  .img-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-    grid-auto-flow: dense;
-    grid-gap: 0.5px;
-  }
+  styles: ` 
   `
 })
-export class ImageGridComponent implements OnInit{
-
-  @Input() medias!: Media[] 
+export class ImageGridComponent implements OnInit,AfterViewInit{
+  @ViewChild('imageGrid') imageGridRef!: ElementRef;
+  @Input() medias!: Media[] ;
   galleryName: string="";
   albumName: string="";
+  tbnlSidelen=MIN_TBNL_SIDELEN;
   constructor(
     private router: Router,
     private route: ActivatedRoute,
     private mediaService: MediaService
   ) {}
+  ngAfterViewInit(): void {
+    this.calculateSidelen();
+  }
+  @HostListener('window:resize', ['$event'])
+  onResize(_event: any) {
+    this.calculateSidelen();
+  }
   ngOnInit(): void {
     this.route.paramMap.subscribe((params) => {
       this.galleryName = params.get("galleryName")!;
       this.albumName = params.get("albumName")!; 
+    
+      
     });
   }
   thumbnailUrl(media:Media){
@@ -43,8 +49,17 @@ export class ImageGridComponent implements OnInit{
   }
   size(media: Media){
     return toReadableSize(media.size);
-  }
-  groupMediaByDay(arg0: Media[]): Record<string, Media[]> {
-    return this.mediaService.groupMediaByDay(arg0)
-  }
+  } 
+  calculateSidelen(){
+    const gridWidth = this.imageGridRef.nativeElement.offsetWidth;
+    //一行能放几张
+    let imgAmount =  Math.ceil (gridWidth/MIN_TBNL_SIDELEN);
+    //剩余空间
+    let remain = gridWidth%MIN_TBNL_SIDELEN;
+    //分给每个图片的空间
+    let each = remain/imgAmount;
+    this.tbnlSidelen = MIN_TBNL_SIDELEN+ each
+
+    console.log(imgAmount,remain,each,this.tbnlSidelen) 
+  } 
 }

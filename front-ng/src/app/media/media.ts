@@ -15,7 +15,7 @@ export interface AlbumInfo {
 }
 export  interface Media {
     name: string;
-    time: number;
+    time: number;//unix timestamp
     size: number;
 }
 export const DefaultGallery: GalleryInfo = {

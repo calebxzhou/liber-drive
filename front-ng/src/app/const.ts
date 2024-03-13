@@ -15,3 +15,5 @@ export const FILE_TYPE_EXTENSION = {
   };
 
   export const LOADING_GIF = "assets/loading.gif";
+  export const MIN_TBNL_SIDELEN = 112;
+  export const MAX_TBNL_SIDELEN = 192;

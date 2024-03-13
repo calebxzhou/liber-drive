@@ -1,0 +1,21 @@
+<mat-progress-spinner
+class="bg-slate-300"
+  *ngIf="!imageData"
+  mode="determinate"
+  [value]="progress"
+></mat-progress-spinner>
+<img
+  *ngIf="imageData != null"
+  [style.width.px]="sidelen"
+  [style.height.px]="sidelen"
+  [style.max-width.px]="sidelen"
+  [style.max-height.px]="sidelen"
+  class="p-1/5 object-cover object-center relative"
+  [src]="imageData"
+/>
+<div
+  *ngIf="isVideo"
+  class="absolute bottom-2 left-2 w-1/2 text-white bg-black text-2xs rounded-3xl"
+>
+  ▶️{{ videoDuration }}
+</div>

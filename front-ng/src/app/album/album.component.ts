@@ -1,7 +1,6 @@
 import { Component, Input, OnInit } from "@angular/core";
 import { ActivatedRoute, Router, RouterModule } from "@angular/router";
 import { Album, DefaultAlbum, GalleryInfo, Media } from "../media/media";
-import { Title } from "@angular/platform-browser";
 import { CommonModule } from "@angular/common";
 import { MediaService } from "../media/media.service";
 import { MatIconModule } from "@angular/material/icon";
@@ -26,8 +25,6 @@ import { ImageGridComponent } from "../image-grid/image-grid.component";
   ],
   templateUrl: "./album.component.html",
   styles: `
-   
- 
   `,
 })
 export class AlbumComponent implements OnInit {
@@ -36,8 +33,12 @@ export class AlbumComponent implements OnInit {
 
   title: string = "";
   album : Album = DefaultAlbum; 
-  medias: Media[] = [];
-
+  reverseOrder = (a: { key: string; }, b: { key: string; }) => {
+    return a.key > b.key ? -1 : (b.key > a.key ? 1 : 0);
+  }
+  
+  //日期分组图片
+  mediaGroups:Record<string, Media[]> = {};
   constructor(
     private router: Router,
     private route: ActivatedRoute,
@@ -45,30 +46,25 @@ export class AlbumComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // get the id from the route parameter
     this.route.paramMap.subscribe((params) => {
       this.galleryName = params.get("galleryName")!;
       this.albumName = params.get("albumName")!;
       
       this.mediaService.fetchAlbum(this.galleryName,this.albumName).subscribe((album) => {
         this.album=album;
-        this.medias=Object.values(album.medias).sort((a,b)=>a.time-b.time)
+        let medias=Object.values(this.album.medias)
+        let groups = this.mediaService.groupMediaByDay(medias) ;
+        this.mediaGroups=groups;
         this.title=album.name +" "+ toReadableSize(album.size);
+ 
       });
-        this.mediaService.fetchAlbum(this.galleryName,this.albumName);
-      
-     
-     
     });
+  }
+  getMediasByDate(date:string){
+    return this.mediaGroups[date]!
   }
   isVideo(media: Media): boolean {
     return this.mediaService.isVideo(media);
   }
-  back() {
-    this.router.navigate(["/"]);
-  }
   size(media:Media){return toReadableSize(media.size) }
-  imgPreview(media: Media) {
-    return this.mediaService.fetchMediaUrl(this.galleryName,this.album.name,media.name,1);
-  }
 }
