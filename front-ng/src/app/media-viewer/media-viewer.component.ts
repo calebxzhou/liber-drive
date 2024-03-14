@@ -20,6 +20,7 @@ import { Router, ActivatedRoute } from "@angular/router";
 import { LOADING_GIF } from "../const";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { HttpEvent, HttpEventType } from "@angular/common/http";
+import $ from "jquery";
 // import Swiper styles
 import "swiper/css";
 import "swiper/css/navigation";
@@ -40,15 +41,6 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   @Input() isDisplayViewer!: boolean;
   @Output() isDisplayViewerChange = new EventEmitter<boolean>();
   swiper!: Swiper;
-  /* swiperConfig: SwiperOptions = {
-    initialSlide: this.index,
-    navigation: false,
-    pagination: { clickable: true },
-    scrollbar: { draggable: true },
-    touchRatio: 1,
-    loop: true,
-    effect: "coverflow", // Choose the effect you want
-  }; */
 
   galleryName = "";
   albumName = "";
@@ -76,17 +68,8 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     //取消默认返回键逻辑
     history.pushState(null, "", window.location.href); // Prevent the default back action
   }
-  @HostListener("window:keydown", ["$event"])
-  onWindowKeyDown(event: KeyboardEvent) {
-    if (event.key == "ArrowLeft") {
-      this.prev();
-    } else if (event.key == "ArrowRight") {
-      this.next();
-    }
-  }
   ngAfterViewInit() {
     this.swiper = new Swiper("#swiper", {
-      effect: "coverflow",
       // Optional parameters
       direction: "horizontal",
       loop: false,
@@ -116,28 +99,23 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
       this.onSwiperIndexChange(s, this.medias)
     );
   }
-  //鼠标滚轮放大图片
-  scale = 1;
-  onWheel(event: WheelEvent): void {
-    event.preventDefault();
-    this.scale += event.deltaY * -0.01;
-    this.scale = Math.min(Math.max(1, this.scale), 8);
-    //放大自动载入原图
-    if (!this.isOriginalLoaded && this.scale > 4) {
-      this.loadOriginal();
-    }
-    const target = event.target as HTMLElement;
-    target.style.transform = `scale(${this.scale})`;
-  }
+  //改变图片时
   onSwiperIndexChange(swiper: Swiper, medias: Media[]) {
-    let index = swiper.activeIndex;
-    let media = medias[index];
+    this.index = swiper.activeIndex;
+    let media = medias[this.index];
     this.title = media.name;
+    this.fullImageSize = toReadableSize(media.size * 3);
     this.mediaService
       .fetchImageExif(this.galleryName, this.albumName, this.now.name)
       .subscribe((exif) => {
         this.title += `⏰${exif.shot_time}📷${exif.make}🔭${exif.lens}📐${exif.focal_len}mm📸${exif.xp_prog}挡👁️F${exif.av}⏱${exif.tv}s@ISO${exif.iso}`;
       });
+    this.isOriginalLoaded = false;
+    //暂停视频
+    $("video").each(function () {
+      let e = this as HTMLVideoElement;
+      $(e)[0].pause();
+    });
   }
   ngOnInit(): void {
     //禁止滚动条
@@ -177,23 +155,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
             this.displayingUrl = URL.createObjectURL(blob);
           }
         });
-    }
-    if (this.isVideoNow()) {
-      this.displayingUrl = this.mediaService.fetchMediaUrl(
-        this.galleryName,
-        this.albumName,
-        this.now.name,
-        -1
-      );
-    }
-
-    this.fullImageSize = toReadableSize(this.now.size * 3);
-    this.title = `${this.now.name}`;
-    this.mediaService
-      .fetchImageExif(this.galleryName, this.albumName, this.now.name)
-      .subscribe((exif) => {
-        this.title += `⏰${exif.shot_time}📷${exif.make}🔭${exif.lens}📐${exif.focal_len}mm📸${exif.xp_prog}挡👁️F${exif.av}⏱${exif.tv}s@ISO${exif.iso}`;
-      }); */
+    } */
   }
   prev() {
     if (this.index > 0) this.index--;
@@ -203,10 +165,10 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.index < this.medias.length - 1) this.index++;
     this.update();
   }
-  loadOriginal() {
+  loadOriginal(media: Media) {
     let t1 = Date.now();
     this.mediaService
-      .fetchMedia(this.galleryName, this.albumName, this.now.name, -1)
+      .fetchMedia(this.galleryName, this.albumName, media.name, -1)
       .subscribe((event: HttpEvent<any>) => {
         if (event.type === HttpEventType.DownloadProgress) {
           this.fullImageSize =
@@ -214,7 +176,10 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
         } else if (event.type === HttpEventType.Response) {
           let t2 = Date.now();
           const blob: Blob = event.body;
-          this.displayingUrl = URL.createObjectURL(blob);
+          let imageEl: HTMLImageElement = document.getElementById(
+            media.name
+          ) as HTMLImageElement;
+          imageEl.src = URL.createObjectURL(blob);
           this.isOriginalLoaded = true;
           this.snackBar.open(
             `已载入原图(⏰${((t2 - t1) / 1000).toFixed(2)}s)`,

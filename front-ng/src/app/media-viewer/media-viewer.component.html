@@ -1,6 +1,6 @@
 <div class="fixed top-0 left-0 w-full h-full bg-black z-10">
   <!-- 顶部 -->
-  <div class="">
+  <div class="block">
     <!-- 关闭按钮 -->
     <button class="text-xl float-left" (click)="close()">◀️</button>
     <!-- 文件名 尺寸 -->
@@ -13,13 +13,22 @@
       <!-- Slides -->
       <div class="swiper-slide" *ngFor="let media of medias">
         <img
+          id="{{ media.name }}"
           *ngIf="isImage(media)"
           [src]="mediaUrl(media, false)"
-          class="block mx-auto object-contain h-[90vh]"
-          (wheel)="onWheel($event)"
+          class="block mx-auto object-contain h-[95vh]"
           loading="lazy"
         />
-
+        <div
+          class="absolute left-2 bottom-0 text-center text-white mb-1 bg-opacity-70 bg-black"
+        >
+          <button
+            *ngIf="isImage(media) && !isOriginalLoaded"
+            (click)="loadOriginal(media)"
+          >
+            💾原图{{ fullImageSize }}
+          </button>
+        </div>
         <!-- 视频 -->
         <video
           controls
