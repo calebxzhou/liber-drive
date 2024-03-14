@@ -99,17 +99,33 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
       this.onSwiperIndexChange(s, this.medias)
     );
   }
+  playVideo(media: Media) {
+    $("#div_" + media.size).html(`
+    <video
+          controls
+          crossorigin
+          playsinline
+          src="${this.mediaUrl(media, true)}"
+          class="block mx-auto object-contain h-[95vh]"
+          loading="lazy"
+        ></video>
+    `);
+    this.isOriginalLoaded = true;
+  }
   //改变图片时
   onSwiperIndexChange(swiper: Swiper, medias: Media[]) {
     this.index = swiper.activeIndex;
     let media = medias[this.index];
     this.title = media.name;
     this.fullImageSize = toReadableSize(media.size * 3);
-    this.mediaService
-      .fetchImageExif(this.galleryName, this.albumName, this.now.name)
-      .subscribe((exif) => {
-        this.title += `⏰${exif.shot_time}📷${exif.make}🔭${exif.lens}📐${exif.focal_len}mm📸${exif.xp_prog}挡👁️F${exif.av}⏱${exif.tv}s@ISO${exif.iso}`;
-      });
+    if (this.isImage(media)) {
+      this.mediaService
+        .fetchImageExif(this.galleryName, this.albumName, this.now.name)
+        .subscribe((exif) => {
+          this.title += `⏰${exif.shot_time}📷${exif.make}🔭${exif.lens}📐${exif.focal_len}mm📸${exif.xp_prog}挡👁️F${exif.av}⏱${exif.tv}s@ISO${exif.iso}`;
+        });
+    }
+
     this.isOriginalLoaded = false;
     //暂停视频
     $("video").each(function () {
@@ -177,7 +193,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
           let t2 = Date.now();
           const blob: Blob = event.body;
           let imageEl: HTMLImageElement = document.getElementById(
-            media.name
+            `img_${media.size}`
           ) as HTMLImageElement;
           imageEl.src = URL.createObjectURL(blob);
           this.isOriginalLoaded = true;
