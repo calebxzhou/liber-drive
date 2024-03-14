@@ -9,6 +9,7 @@ import {
   AlbumInfo,
   DefaultGallery,
   DefaultAlbum,
+  ImageExif,
 } from "./media";
 
 @Injectable({
@@ -44,6 +45,15 @@ export class MediaService {
     return `${this.getUrl()}/gallery/${galleryName}/${albumName}/${mediaName}${
       tbnl > -1 ? `?tbnl=${tbnl}` : ""
     }`;
+  }
+  fetchImageExif(
+    galleryName: string,
+    albumName: string,
+    mediaName: string
+  ): Observable<ImageExif> {
+    return this.http.get<ImageExif>(
+      `${this.getUrl()}/gallery/${galleryName}/${albumName}/${mediaName}?exif=1`
+    );
   }
   //tbnl：预览 -1原图 0大图 1小图
   fetchMedia(
@@ -87,20 +97,21 @@ export class MediaService {
   groupMediaByDay(mediaArray: Media[]): Record<string, Media[]> {
     const grouped: Record<string, Media[]> = {};
 
-    mediaArray.sort((a,b)=>b.time-a.time)
-    .forEach((media) => {
-      // Convert Unix timestamp to a date string (YYYY-MM-DD)
-      const date = new Date(media.time * 1000).toISOString().split("T")[0];
+    mediaArray
+      .sort((a, b) => b.time - a.time)
+      .forEach((media) => {
+        // Convert Unix timestamp to a date string (YYYY-MM-DD)
+        const date = new Date(media.time * 1000).toISOString().split("T")[0];
 
-      // If the date isn't in the grouped object, initialize it with an empty array
-      if (!grouped[date]) {
-        grouped[date] = [];
-      }
+        // If the date isn't in the grouped object, initialize it with an empty array
+        if (!grouped[date]) {
+          grouped[date] = [];
+        }
 
-      // Push the current media object to the array for the date
-      grouped[date].push(media);
-    });
-    
+        // Push the current media object to the array for the date
+        grouped[date].push(media);
+      });
+
     return grouped;
   }
   // In your Angular component
@@ -124,7 +135,7 @@ export class MediaService {
   formatDuration(seconds: number): string {
     const hours: number = Math.floor(seconds / 3600);
     const minutes: number = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds: number = seconds % 60;
+    const remainingSeconds: number = Math.round(seconds % 60);
 
     const paddedHours = hours.toString().padStart(2, "0");
     const paddedMinutes = minutes.toString().padStart(2, "0");

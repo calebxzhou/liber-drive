@@ -18,3 +18,29 @@
 }
 
 html, body { height: 100%; } 
+/* CSS for OverlayComponent */
+.gallery { 
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  z-index: 1000; /* Make sure it's on top */
+}
+.album {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2000; /* Make sure it's on top */
+}
+
+.viewer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3000; /* Make sure it's on top */
+}

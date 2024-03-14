@@ -1,13 +1,23 @@
 <lg-navbar [title]="title"></lg-navbar>
-<div class="pt-16" >
+<div class="pt-16">
   <div *ngIf="mediaGroups == {}">
     <p class="text-2xl">载入中....</p>
   </div>
-  <div #imageGrid *ngFor="let group of mediaGroups | keyvalue: reverseOrder" class="m-auto justify-center" >
-    <p class="text-xl m-4" style="flex-basis: 100%;">{{ group.key }}</p>
-    <lg-image-grid [medias]="getMediasByDate(group.key)"></lg-image-grid>
+  <div
+    #imageGrid
+    *ngFor="let group of mediaGroups | keyvalue : reverseOrder"
+    class="m-auto justify-center"
+  >
+    <p class="text-xl m-4" style="flex-basis: 100%">{{ group.key }}</p>
+    <lg-image-grid
+      [medias]="getMediasByDate(group.key)"
+      (openViewer)="openViewer($event)"
+    ></lg-image-grid>
   </div>
-  
-  
 </div>
-
+<lg-media-viewer
+  *ngIf="isDisplayViewer"
+  [(isDisplayViewer)]="isDisplayViewer"
+  [medias]="medias"
+  [index]="viewerIndex"
+></lg-media-viewer>

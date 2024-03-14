@@ -14,21 +14,24 @@ import {
   Routes,
   provideRouter,
   withComponentInputBinding,
-} from "@angular/router"; 
-import { MediaViewerComponent } from "./app/media-viewer/media-viewer.component";
+} from "@angular/router";
 import { provideAnimations } from "@angular/platform-browser/animations";
 import { HomeComponent } from "./app/home/home.component";
-import { AlbumGridComponent } from "./app/album-grid/album-grid.component";
 import { AlbumComponent } from "./app/album/album.component";
 import { GalleryComponent } from "./app/gallery/gallery.component";
+import { register as registerSwiperElements } from "swiper/element/bundle";
 export const routes: Routes = [
-  { path: "home", component: HomeComponent},
+  { path: "home", component: HomeComponent },
+  {
+    path: "gallery/:galleryName/:albumName/:mediaName",
+    component: AlbumComponent,
+  },
   { path: "gallery/:galleryName/:albumName", component: AlbumComponent },
   { path: "gallery/:galleryName", component: GalleryComponent },
-  { path: "viewer/:galleryId/:startMediaId", component: MediaViewerComponent },
-  { path: '',   redirectTo: '/home', pathMatch: 'full' },
-  { path: '**',   redirectTo: '/home', pathMatch: 'full' },
+  { path: "", redirectTo: "/home", pathMatch: "full" },
+  { path: "**", redirectTo: "/home", pathMatch: "full" },
 ];
+registerSwiperElements();
 bootstrapApplication(AppComponent, {
   providers: [
     provideHttpClient(),

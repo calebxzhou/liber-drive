@@ -1,23 +1,33 @@
-import {Component,Input, ViewContainerRef} from '@angular/core'; 
-
-import { Router, RouterLink, RouterLinkActive, RouterModule, RouterOutlet } from '@angular/router'; 
-import { trigger, state, style, transition, animate } from '@angular/animations';
-import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { BrowserModule } from '@angular/platform-browser';
-import { CommonModule } from '@angular/common';
-import { AlbumGridComponent } from './album-grid/album-grid.component';
+import {
+  CUSTOM_ELEMENTS_SCHEMA,
+  Component,
+  Input,
+  ViewContainerRef,
+} from "@angular/core";
+import {
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterModule,
+  RouterOutlet,
+} from "@angular/router";
 import { NavbarComponent } from "./navbar/navbar.component";
+import { GalleryComponent } from "./gallery/gallery.component";
+import { SwiperOptions } from "swiper/types/swiper-options";
 @Component({
-    selector: 'app-root',
-    templateUrl: './app.component.html',
-    standalone: true,
-    imports: [
-        RouterModule, AlbumGridComponent, RouterOutlet, RouterLink, RouterLinkActive,
-        NavbarComponent
-    ]
+  selector: "app-root",
+  templateUrl: "./app.component.html",
+  standalone: true,
+  imports: [
+    RouterModule,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    NavbarComponent,
+    GalleryComponent,
+  ],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
-
 export class AppComponent {
-    constructor(private router: Router) {}
+  constructor(private router: Router) {}
 }
-

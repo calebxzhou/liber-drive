@@ -1,7 +1,11 @@
-<div #imageGrid class="flex flex-wrap" >
-  <lg-image-tbnl *ngFor="let media of medias"
-  [url]="thumbnailUrl(media)"
-  [isVideo]="isVideo(media)"
-  [sidelen]="tbnlSidelen"
-></lg-image-tbnl>
+<div class="img-grid">
+  <lg-image-tbnl
+    *ngFor="let media of medias"
+    class="grid-item"
+    id="{{ thumbnailUrl(media) }}"
+    [url]="thumbnailUrl(media)"
+    [isVideo]="isVideo(media)"
+    (click)="openViewer$(media)"
+  >
+  </lg-image-tbnl>
 </div>

@@ -1,25 +1,54 @@
-<div class="w-full h-full bg-black">
-    <!-- 顶部 -->
-    <div class="">
-        <!-- 关闭按钮 -->
-        <button class="text-xl float-left" (click)="close()">◀️</button>
-        <!-- 文件名 尺寸 -->
-        <div class="text-2xs leading-none text-white">
-            {{ title }}
-        </div>
+<div class="fixed top-0 left-0 w-full h-full bg-black z-10">
+  <!-- 顶部 -->
+  <div class="">
+    <!-- 关闭按钮 -->
+    <button class="text-xl float-left" (click)="close()">◀️</button>
+    <!-- 文件名 尺寸 -->
+    <div class="text-2xs leading-none text-white">
+      {{ title }}
     </div>
-    <!-- 图片 -->
-    <img *ngIf="this.now!==undefined && isImageNow()" [src]="displayingUrl"
-        class="block mx-auto object-contain h-[90vh]" (wheel)="onWheel($event)"/>
-        <!-- 视频 -->
-    <video controls crossorigin playsinline *ngIf="this.now!==undefined &&isVideoNow()"
-    [src]="displayingUrl" class="block mx-auto object-contain h-[90vh]"></video>
-    <div class="absolute bottom-0 text-center text-white mb-1 w-full">
-        <button *ngIf="this.index>0" class="float-left" (click)="prev()">⬅️上一张</button>&emsp;
-        <button *ngIf="this.now!==undefined  && isImageNow() &&  !isOriginalLoaded" (click)="loadOriginal()">💾
-            查看原图
-            {{ fullImageSize }}</button>&emsp;
-        <button *ngIf="this.index<this.medias.length - 1" class="float-right" (click)="next()">下一张➡️</button>&emsp;
+  </div>
+  <div id="swiper">
+    <div class="swiper-wrapper">
+      <!-- Slides -->
+      <div class="swiper-slide" *ngFor="let media of medias">
+        <img
+          *ngIf="isImage(media)"
+          [src]="mediaUrl(media, false)"
+          class="block mx-auto object-contain h-[90vh]"
+          (wheel)="onWheel($event)"
+          loading="lazy"
+        />
 
+        <!-- 视频 -->
+        <video
+          controls
+          crossorigin
+          playsinline
+          *ngIf="isVideo(media)"
+          [src]="mediaUrl(media, true)"
+          class="block mx-auto object-contain h-[90vh]"
+        ></video>
+      </div>
     </div>
+  </div>
+
+  <!-- <div class="absolute bottom-0 text-center text-white mb-1 w-full">
+    <button *ngIf="this.index > 0" class="float-left" (click)="prev()">
+      ⬅️上一张</button
+    >&emsp;
+    <button
+      *ngIf="this.now !== undefined && isImageNow() && !isOriginalLoaded"
+      (click)="loadOriginal()"
+    >
+      💾 查看原图 {{ fullImageSize }}</button
+    >&emsp;
+    <button
+      *ngIf="this.index < this.medias.length - 1"
+      class="float-right"
+      (click)="next()"
+    >
+      下一张➡️</button
+    >&emsp;
+  </div> -->
 </div>
