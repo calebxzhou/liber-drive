@@ -36,7 +36,8 @@
           playsinline
           *ngIf="isVideo(media)"
           [src]="mediaUrl(media, true)"
-          class="block mx-auto object-contain h-[90vh]"
+          class="block mx-auto object-contain h-[95vh]"
+          loading="lazy"
         ></video>
       </div>
     </div>
