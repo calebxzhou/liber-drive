@@ -22,5 +22,4 @@ back/target
 *.njsproj
 *.sln
 *.sw?
-*.webp
 back/drive_dir.txt
