@@ -14,6 +14,7 @@ use crate::image_exif::ImageExif;
 use crate::util::{human_readable_size, AnyError, ResultAnyErr};
 
 //图片/视频
+#[serde_with::skip_serializing_none]
 #[derive(Serialize, Clone)]
 pub struct MediaItem {
     pub name: String,
@@ -21,22 +22,35 @@ pub struct MediaItem {
     pub path: PathBuf,
     pub time: u64,
     pub size: u64,
-    #[serde(skip_serializing)]
     pub exif: Option<ImageExif>,
+    pub duration: Option<u16>,
 }
 
 impl MediaItem {
-    pub fn new(path: PathBuf, name: String, time: u64, size: u64, exif: Option<ImageExif>) -> Self {
+    pub fn new(
+        path: PathBuf,
+        name: String,
+        time: u64,
+        size: u64,
+        exif: Option<ImageExif>,
+        duration: Option<u16>,
+    ) -> Self {
         Self {
             path,
             name,
             time,
             size,
             exif,
+            duration,
         }
     }
-    pub fn get_extension(&self) -> String{
-        self.path.extension().unwrap_or(OsStr::new("")).to_ascii_lowercase().to_string_lossy().into_owned()
+    pub fn get_extension(&self) -> String {
+        self.path
+            .extension()
+            .unwrap_or(OsStr::new(""))
+            .to_ascii_lowercase()
+            .to_string_lossy()
+            .into_owned()
     }
     //预览路径
     pub fn get_preview_path(&self, thumbnail: bool) -> PathBuf {
@@ -134,7 +148,7 @@ pub fn get_file_size(path: &PathBuf) -> ResultAnyErr<u64> {
     Ok(meta.len())
 }
 //读取视频第一帧
-pub fn get_video_first_frame(video_path: &String) -> Result<DynamicImage, AnyError> {
+pub fn get_video_first_frame(video_path: &String) -> ResultAnyErr<DynamicImage> {
     let mut ffmpeg_output = Command::new("ffmpeg")
         .arg("-i") // input file
         .arg(video_path) // replace with your file
@@ -158,16 +172,34 @@ pub fn get_video_first_frame(video_path: &String) -> Result<DynamicImage, AnyErr
         .decode()?;
     Ok(img)
 }
+//读取视频时长
+pub fn get_video_duration(path: &str) -> ResultAnyErr<u16> {
+    let output = Command::new("ffprobe")
+        .args(&[
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            path,
+        ])
+        .output()?;
 
+    let duration_str = std::str::from_utf8(&output.stdout)?.trim();
+    let duration = duration_str.parse::<f64>()?;
+
+    Ok(duration as u16)
+}
 //相册
-#[derive(Serialize,Clone)]
+#[derive(Serialize, Clone)]
 pub struct Gallery {
     pub name: String,
     pub size: u64,
     pub albums: HashMap<String, Album>,
 }
-#[derive(Serialize,Clone)]
-pub struct GalleryInfo{
+#[derive(Serialize, Clone)]
+pub struct GalleryInfo {
     pub name: String,
     pub size: u64,
     pub albums: Vec<AlbumInfo>,
@@ -178,12 +210,16 @@ impl Gallery {
     }
 }
 impl GalleryInfo {
-    pub fn from_gallery(gallery: &Gallery) -> Self{
-        let albums: Vec<AlbumInfo> = gallery.albums.values().map(|a|AlbumInfo::from_album(a)).collect();
-        GalleryInfo{
+    pub fn from_gallery(gallery: &Gallery) -> Self {
+        let albums: Vec<AlbumInfo> = gallery
+            .albums
+            .values()
+            .map(|a| AlbumInfo::from_album(a))
+            .collect();
+        GalleryInfo {
             name: gallery.name.clone(),
             size: gallery.size,
-            albums
+            albums,
         }
     }
 }
@@ -200,38 +236,30 @@ impl fmt::Display for Gallery {
 }
 
 //影集
-#[derive(Serialize,Clone)]
+#[derive(Serialize, Clone)]
 pub struct Album {
     pub name: String,
     pub size: u64,
     pub medias: HashMap<String, MediaItem>,
 }
-#[derive(Serialize,Clone)]
+#[derive(Serialize, Clone)]
 pub struct AlbumInfo {
     pub name: String,
     pub size: u64,
-    pub media_amount: u32
+    pub media_amount: u32,
 }
 impl AlbumInfo {
-    pub fn from_album(album: &Album) -> Self{
-        AlbumInfo{
+    pub fn from_album(album: &Album) -> Self {
+        AlbumInfo {
             name: album.name.clone(),
             size: album.size,
-            media_amount: album.medias.len() as u32
+            media_amount: album.medias.len() as u32,
         }
     }
 }
 impl Album {
-    pub fn new(
-        name: String,
-        size: u64,
-        medias: HashMap<String, MediaItem>,
-    ) -> Self {
-        Self {
-            name,
-            size,
-            medias,
-        }
+    pub fn new(name: String, size: u64, medias: HashMap<String, MediaItem>) -> Self {
+        Self { name, size, medias }
     }
 
     //封面图片ID

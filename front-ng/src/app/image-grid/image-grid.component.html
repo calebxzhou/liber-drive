@@ -3,8 +3,9 @@
     *ngFor="let media of medias"
     class="grid-item"
     id="{{ thumbnailUrl(media) }}"
-    [url]="thumbnailUrl(media)"
-    [isVideo]="isVideo(media)"
+    [galleryName]="galleryName"
+    [albumName]="albumName"
+    [media]="media"
     (click)="openViewer$(media)"
   >
   </lg-image-tbnl>

@@ -10,6 +10,8 @@
   >
     <p class="text-xl m-4" style="flex-basis: 100%">{{ group.key }}</p>
     <lg-image-grid
+      [galleryName]="galleryName"
+      [albumName]="albumName"
       [medias]="getMediasByDate(group.key)"
       (openViewer)="openViewer($event)"
     ></lg-image-grid>

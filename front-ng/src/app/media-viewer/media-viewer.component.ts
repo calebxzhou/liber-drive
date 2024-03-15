@@ -3,14 +3,17 @@ import {
   AfterViewInit,
   CUSTOM_ELEMENTS_SCHEMA,
   Component,
+  ElementRef,
   EventEmitter,
   HostListener,
   Input,
   OnDestroy,
   OnInit,
   Output,
+  QueryList,
   Renderer2,
   ViewChild,
+  ViewChildren,
 } from "@angular/core";
 import { Media, ImageExif, GalleryInfo } from "../media/media";
 import { MediaService } from "../media/media.service";
@@ -20,7 +23,6 @@ import { Router, ActivatedRoute } from "@angular/router";
 import { LOADING_GIF } from "../const";
 import { MatSnackBar } from "@angular/material/snack-bar";
 import { HttpEvent, HttpEventType } from "@angular/common/http";
-import $ from "jquery";
 // import Swiper styles
 import "swiper/css";
 import "swiper/css/navigation";
@@ -37,11 +39,11 @@ import { Swiper } from "swiper";
 export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   //所有图片
   @Input() medias!: Media[];
-  @Input() index!: number;
+  @Input() index: number = -1;
   @Input() isDisplayViewer!: boolean;
   @Output() isDisplayViewerChange = new EventEmitter<boolean>();
-  swiper!: Swiper;
-
+  @ViewChildren("videoPlayer") videoPlayers: QueryList<ElementRef> =
+    new QueryList();
   galleryName = "";
   albumName = "";
   loadProgress = 0;
@@ -55,7 +57,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   displayingUrl = LOADING_GIF;
   //是否原图
   isOriginalLoaded = false;
-
+  isVideoLoaded = false;
   constructor(
     private renderer: Renderer2,
     private router: Router,
@@ -69,7 +71,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     history.pushState(null, "", window.location.href); // Prevent the default back action
   }
   ngAfterViewInit() {
-    this.swiper = new Swiper("#swiper", {
+    let params = {
       // Optional parameters
       direction: "horizontal",
       loop: false,
@@ -93,14 +95,30 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
       scrollbar: {
         el: ".swiper-scrollbar",
       },
-    });
-    this.onSwiperIndexChange(this.swiper, this.medias);
-    this.swiper.on("activeIndexChange", (s) =>
+      autoHeight: true,
+      virtual: {
+        enabled: true,
+      },
+      zoom: {
+        maxRatio: 10,
+      },
+      on: {
+        zoomChange: (swiper: Swiper, scale: number) => {
+          swiper.allowTouchMove = scale < 2;
+        },
+      },
+    };
+
+    let el = document.querySelector("swiper-container")!;
+    Object.assign(el, params);
+    el.initialize();
+    this.onSwiperIndexChange(el.swiper, this.medias);
+    el.swiper.on("activeIndexChange", (s: Swiper) =>
       this.onSwiperIndexChange(s, this.medias)
     );
   }
   playVideo(media: Media) {
-    $("#div_" + media.size).html(`
+    /* $("#div_" + media.size).html(`
     <video
           controls
           crossorigin
@@ -109,8 +127,8 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
           class="block mx-auto object-contain h-[95vh]"
           loading="lazy"
         ></video>
-    `);
-    this.isOriginalLoaded = true;
+    `); */
+    this.isVideoLoaded = true;
   }
   //改变图片时
   onSwiperIndexChange(swiper: Swiper, medias: Media[]) {
@@ -118,19 +136,17 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     let media = medias[this.index];
     this.title = media.name;
     this.fullImageSize = toReadableSize(media.size * 3);
-    if (this.isImage(media)) {
-      this.mediaService
-        .fetchImageExif(this.galleryName, this.albumName, this.now.name)
-        .subscribe((exif) => {
-          this.title += `⏰${exif.shot_time}📷${exif.make}🔭${exif.lens}📐${exif.focal_len}mm📸${exif.xp_prog}挡👁️F${exif.av}⏱${exif.tv}s@ISO${exif.iso}`;
-        });
+    if (media.exif) {
+      let exif = media.exif;
+      this.title += `⏰${exif.shot_time}📷${exif.make}🔭${exif.lens}📐${exif.focal_len}mm📸${exif.xp_prog}挡👁️F${exif.av}⏱${exif.tv}s@ISO${exif.iso}`;
     }
 
     this.isOriginalLoaded = false;
+    this.isVideoLoaded = false;
     //暂停视频
-    $("video").each(function () {
-      let e = this as HTMLVideoElement;
-      $(e)[0].pause();
+    this.videoPlayers.forEach((player) => {
+      const videoEl: HTMLVideoElement = player.nativeElement;
+      videoEl.pause();
     });
   }
   ngOnInit(): void {

@@ -34,7 +34,10 @@ impl MainService {
                 )
             })
             .collect();
-        Self { galleries ,galleries_info}
+        Self {
+            galleries,
+            galleries_info,
+        }
     }
     //所有相册
     fn scan_all_galleries(drive_dir: &PathBuf) -> ResultAnyErr<HashMap<String, Gallery>> {
@@ -101,7 +104,7 @@ impl MainService {
                 continue;
             }
             let size = media_item::get_file_size(&path)?;
-            //时间
+
             let mut time = media_item::get_file_created_time(&path)?;
             let exif = image_exif::ImageExif::from_media_path(&path);
 
@@ -120,9 +123,14 @@ impl MainService {
             } else {
                 None
             };
+
+            //视频时长
+            let duration = media_item::is_video(&path)
+                .then(|| media_item::get_video_duration(path.to_str().unwrap()).unwrap());
+
             album_medias.insert(
                 name.clone(),
-                MediaItem::new(path, name.clone(), time, size, exif),
+                MediaItem::new(path, name.clone(), time, size, exif, duration),
             );
             //累计相册尺寸
             album_size += size;

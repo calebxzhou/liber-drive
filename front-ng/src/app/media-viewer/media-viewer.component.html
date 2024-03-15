@@ -8,38 +8,46 @@
       {{ title }}
     </div>
   </div>
-  <div id="swiper">
-    <div class="swiper-wrapper">
-      <!-- Slides *ngIf="isImage(media)" -->
-      <div class="swiper-slide" *ngFor="let media of medias">
-        <div id="div_{{ media.size }}">
-          <img
-            id="img_{{ media.size }}"
-            [src]="mediaUrl(media, false)"
-            class="block mx-auto object-contain h-[95vh]"
-            loading="lazy"
-          />
-        </div>
-
-        <div
-          class="absolute left-2 bottom-0 text-center text-white mb-1 bg-opacity-70 bg-black"
-        >
-          <button
-            *ngIf="isImage(media) && !isOriginalLoaded"
-            (click)="loadOriginal(media)"
-          >
-            💾原图{{ fullImageSize }}
-          </button>
-          <button
-            *ngIf="isVideo(media) && !isOriginalLoaded"
-            (click)="playVideo(media)"
-          >
-            ▶播放视频
-          </button>
-        </div>
+  <swiper-container init="false">
+    <!-- Slides *ngIf="isImage(media)" -->
+    <swiper-slide *ngFor="let media of medias">
+      <div class="swiper-zoom-container">
+        <img
+          id="img_{{ media.size }}"
+          [src]="mediaUrl(media, false)"
+          *ngIf="!isVideoLoaded"
+          class="block mx-auto object-contain h-[95vh]"
+          loading="lazy"
+        />
       </div>
-    </div>
-  </div>
+      <video
+        #videoPlayer
+        controls
+        crossorigin
+        playsinline
+        *ngIf="isVideo(media) && isVideoLoaded"
+        [src]="mediaUrl(media, true)"
+        class="block mx-auto object-contain h-[95vh]"
+        loading="lazy"
+      ></video>
+      <div
+        class="absolute left-2 bottom-0 text-center text-white mb-1 bg-opacity-70 bg-black"
+      >
+        <button
+          *ngIf="isImage(media) && !isOriginalLoaded"
+          (click)="loadOriginal(media)"
+        >
+          💾原图{{ fullImageSize }}
+        </button>
+        <button
+          *ngIf="isVideo(media) && !isVideoLoaded"
+          (click)="playVideo(media)"
+        >
+          ▶播放视频
+        </button>
+      </div>
+    </swiper-slide>
+  </swiper-container>
 
   <!-- <div class="absolute bottom-0 text-center text-white mb-1 w-full">
     <button *ngIf="this.index > 0" class="float-left" (click)="prev()">

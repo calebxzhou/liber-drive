@@ -1,5 +1,11 @@
 <div #imageTbnl [@scaleAnimation]="state" class="relative cursor-pointer">
-  <img class="w-48 h-32 object-cover object-center" [src]="url" />
+  <mat-progress-spinner
+    class="bg-slate-300"
+    *ngIf="!imageUrl"
+    mode="determinate"
+    [value]="progress"
+  ></mat-progress-spinner>
+  <img class="w-48 h-32 object-cover object-center" [src]="imageUrl" />
   <div
     *ngIf="isVideo"
     class="absolute bottom-2 left-2 w-1/2 text-white bg-opacity-70 bg-black text-2xs rounded-3xl pl-1 pr-2"

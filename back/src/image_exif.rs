@@ -2,11 +2,12 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 
-use exif::{In, Tag}; 
-use serde::Serialize; 
+use exif::{In, Tag};
+use serde::Serialize;
 
-use crate::util::ResultAnyErr; 
+use crate::util::ResultAnyErr;
 //照片摄影参数
+#[serde_with::skip_serializing_none]
 #[derive(Serialize, Clone)]
 pub struct ImageExif {
     //相机
@@ -51,14 +52,14 @@ impl ImageExif {
 
     pub fn get_field_value(exif: &exif::Exif, tag: Tag) -> String {
         match exif.get_field(tag, In::PRIMARY) {
-            None => "".to_owned(),
+            None => "".to_string(),
             Some(field) => format!("{}", field.display_value()),
         }
     }
 
     //去除exif字段的杂乱字符
     fn trim_exif_field(exif: &exif::Exif, tag: Tag) -> String {
-        ImageExif::get_field_value(exif, tag)
+        Self::get_field_value(exif, tag)
             .replace(['\"', ','], "")
             .trim()
             .to_owned()
@@ -73,11 +74,12 @@ impl ImageExif {
 
         //相机厂商
         let make = Self::trim_exif_field(&exif, Tag::Make);
-        //相机型号
-        let model = Self::trim_exif_field(&exif, Tag::Model)
-            //型号里包含厂商 则去除
-            .replace(&make, "");
+
+        let model = Self::trim_exif_field(&exif, Tag::Model);
+        //型号里包含厂商 则去除
+        let model = model.replace(&make, "");
         let make = format!("{} {}", make, model);
+
         //快门时间
         let tv = Self::trim_exif_field(&exif, Tag::ExposureTime);
         //档位 只保留第一个字母
@@ -86,15 +88,12 @@ impl ImageExif {
             .next()
             .unwrap_or(' ')
             .to_ascii_uppercase();
+
         let av = Self::trim_exif_field(&exif, Tag::FNumber);
         //镜头
         let lens_make = Self::trim_exif_field(&exif, Tag::LensMake);
         let lens_model = Self::trim_exif_field(&exif, Tag::LensModel);
-        let lens = if lens_model.contains("| Art") {
-            format!("Sigma {} {}", lens_make, lens_model)
-        } else {
-            format!("{} {}", lens_make, lens_model)
-        };
+        let lens = format!("{} {}", lens_make, lens_model);
 
         let shot_time = Self::trim_exif_field(&exif, Tag::DateTimeOriginal);
         let focal_len = Self::trim_exif_field(&exif, Tag::FocalLength);

@@ -11,6 +11,7 @@ import {
   animate,
   transition,
 } from "@angular/animations";
+import { Media } from "../media/media";
 @Component({
   selector: "lg-image-tbnl",
   standalone: true,
@@ -27,25 +28,41 @@ import {
   ],
 })
 // 缩略图
-export class ImageTbnlComponent implements OnInit {
-  @Input() url!: string;
-  @Input() isVideo: boolean = false;
+export class ImageTbnlComponent implements OnInit, OnDestroy {
+  @Input() media!: Media;
+  @Input() galleryName!: string;
+  @Input() albumName!: string;
+  isVideo = false;
   state: string = "initial";
   videoDuration = "视频";
-
+  progress: number = 0;
+  imageUrl: string | null = null;
+  private fetchSubscription: Subscription | null = null;
   constructor(private ms: MediaService) {}
 
   ngOnInit(): void {
+    this.isVideo = this.ms.isVideo(this.media);
     setTimeout(() => {
       this.state = "normal";
     }, 0);
-    if (this.isVideo) {
-      this.fetchDuration();
+    if (this.isVideo && this.media.duration) {
+      this.videoDuration = this.ms.formatDuration(this.media.duration);
     }
+    //获取缩略图
+    this.fetchSubscription = this.ms
+      .fetchMedia(this.galleryName, this.albumName, this.media.name, 1)
+      .subscribe((event: HttpEvent<any>) => {
+        if (event.type === HttpEventType.DownloadProgress) {
+          this.progress = Math.round((100 * event.loaded) / (event.total ?? 1));
+        } else if (event.type === HttpEventType.Response) {
+          const blob: Blob = event.body;
+          this.imageUrl = URL.createObjectURL(blob);
+        }
+      });
   }
-
-  async fetchDuration() {
-    //let sec = await this.ms.getVideoDuration(this.url.replaceAll("?tbnl=1",""));
-    this.videoDuration = "视频"; //this.ms.formatDuration(sec);
+  ngOnDestroy(): void {
+    if (this.fetchSubscription) {
+      this.fetchSubscription.unsubscribe();
+    }
   }
 }

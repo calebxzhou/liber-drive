@@ -1,10 +1,10 @@
 use std::collections::HashMap;
-use std::fs; 
+use std::fs;
 use std::io::Write;
-use std::net::{IpAddr, Ipv6Addr, SocketAddr}; 
+use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 
 use axum::body::Body;
- 
+
 use axum::extract::{Path, Query, State};
 use axum::http::header::CONTENT_TYPE;
 
@@ -22,12 +22,12 @@ use axum::{response::IntoResponse, routing::get};
 use chrono::Local;
 
 use env_logger::Builder;
- 
+
 use log::LevelFilter;
 use media_item::GalleryInfo;
 use media_sender::handle_file;
 use media_sender::handle_preview;
-use tower_http::cors::CorsLayer; 
+use tower_http::cors::CorsLayer;
 
 use crate::main_service::MainService;
 use tower_http::compression::CompressionLayer;
@@ -79,7 +79,7 @@ async fn main() {
     let serv = Box::new(MainService::new(&drive_dir));
     let serv: &'static MainService = Box::leak(serv);
     let app = Router::new()
-    //读取照片视频
+        //读取照片视频
         .route(
             "/gallery/:galleryName/:albumName/:mediaName",
             get(get_media).with_state(serv),
@@ -130,20 +130,16 @@ async fn get_album(
     let gallery = match_or_404!(serv.galleries.get(&gallery_name));
     let album = match_or_404!(gallery.albums.get(&album_name));
     //请求缩略图，返回第一张的名字
-    if params.contains_key("tbnl"){
-        if let Some(first) = album.medias.iter().next(){
-            return  first.0.clone().into_response();
+    if params.contains_key("tbnl") {
+        if let Some(first) = album.medias.iter().next() {
+            return first.0.clone().into_response();
         }
     }
     Json(album).into_response()
 }
 async fn get_media(
     headers: HeaderMap,
-    Path((gallery_name, album_name, media_name)): Path<(
-        String,
-        String,
-        String,
-    )>,
+    Path((gallery_name, album_name, media_name)): Path<(String, String, String)>,
     Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
 ) -> Response<Body> {
@@ -151,17 +147,12 @@ async fn get_media(
     let album = match_or_404!(gallery.albums.get(&album_name));
     let media = match_or_404!(album.medias.get(&media_name));
 
-
-    //读取摄影参数
-    if params.contains_key("exif") {
-        let exif = match_or_404!(&media.exif);
-        return Json(exif.clone()).into_response();
-    }
-
     //读取预览
     if let Some(level) = params.get("tbnl") {
         return handle_preview(media, if level == "1" { true } else { false }, &headers).await;
     }
+
+    //读取视频时长
 
     return handle_file(media, &headers).await;
 }

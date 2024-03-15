@@ -19,7 +19,7 @@ import { ImageTbnlComponent } from "../image-tbnl/image-tbnl.component";
 @Component({
   selector: "lg-image-grid",
   standalone: true,
-  imports: [CommonModule,ImageTbnlComponent],
+  imports: [CommonModule, ImageTbnlComponent],
   templateUrl: "./image-grid.component.html",
   styles: ` 
   .img-grid{
@@ -37,31 +37,22 @@ import { ImageTbnlComponent } from "../image-tbnl/image-tbnl.component";
 })
 export class ImageGridComponent implements OnInit {
   @Input() medias!: Media[];
-  galleryName: string = "";
-  albumName: string = "";
+  @Input() galleryName: string = "";
+  @Input() albumName: string = "";
   @Output() openViewer: EventEmitter<any> = new EventEmitter();
-  constructor(
-    private router: Router,
-    private route: ActivatedRoute,
-    private mediaService: MediaService
-  ) {} 
-  openViewer$(media:Media){
-      this.openViewer.emit(media);
+  constructor(private mediaService: MediaService) {}
+  openViewer$(media: Media) {
+    this.openViewer.emit(media);
   }
-  ngOnInit(): void {
-    this.route.paramMap.subscribe((params) => {
-      this.galleryName = params.get("galleryName")!;
-      this.albumName = params.get("albumName")!;
-    });
-  }
+  ngOnInit(): void {}
   thumbnailUrl(media: Media) {
-    let url= this.mediaService.fetchMediaUrl(
+    let url = this.mediaService.fetchMediaUrl(
       this.galleryName,
       this.albumName,
       media.name,
       1
     );
-    return url.replace(/ /g, '%20');
+    return url.replace(/ /g, "%20");
   }
   isVideo(media: Media) {
     return this.mediaService.isVideo(media);
@@ -70,11 +61,15 @@ export class ImageGridComponent implements OnInit {
     return toReadableSize(media.size);
   }
   fetchDuration(media: Media): Observable<string> {
-    return from(this.mediaService.getVideoDuration(this.mediaService.fetchMediaUrl(
-      this.galleryName,
-      this.albumName,
-      media.name,
-      -1
-    ))).pipe(map(sec => this.mediaService.formatDuration(sec)));
+    return from(
+      this.mediaService.getVideoDuration(
+        this.mediaService.fetchMediaUrl(
+          this.galleryName,
+          this.albumName,
+          media.name,
+          -1
+        )
+      )
+    ).pipe(map((sec) => this.mediaService.formatDuration(sec)));
   }
 }

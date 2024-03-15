@@ -10,5 +10,7 @@
 			"path": "front-ng"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "liber-drive"
+	}
 }
