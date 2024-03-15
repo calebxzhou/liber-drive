@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 front-ng/node_modules
 front-ng/.angular
+front-ng/dist
 front/
 *.local
 back/cache
