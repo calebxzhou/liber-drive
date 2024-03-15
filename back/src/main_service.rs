@@ -1,9 +1,11 @@
 use crate::image_exif;
 use crate::util::{date_str_to_timestamp, filename_to_timestamp, ResultAnyErr};
 use log::{debug, info};
+use rayon::iter::*;
 use std::collections::HashMap;
 use std::fs::{self, DirEntry};
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use walkdir::WalkDir;
 
 use crate::media_item::{self, Album, AlbumInfo, Gallery, GalleryInfo, MediaItem};
@@ -39,45 +41,63 @@ impl MainService {
             galleries_info,
         }
     }
-    //所有相册
     fn scan_all_galleries(drive_dir: &PathBuf) -> ResultAnyErr<HashMap<String, Gallery>> {
-        let mut all_galleries = HashMap::new();
-        //扫描每个相册
-        for entry in
-            fs::read_dir(drive_dir)?.filter(|e| e.as_ref().unwrap().file_type().unwrap().is_dir())
-        {
-            let entry = entry.expect("扫描目录错误！");
-            let gallery = Self::scan_single_gallery(&entry).unwrap();
+        let all_galleries = Arc::new(Mutex::new(HashMap::new()));
+
+        // Get all gallery entries
+        let gallery_entries: Vec<_> = fs::read_dir(drive_dir)?
+            .filter(|e| e.as_ref().unwrap().file_type().unwrap().is_dir())
+            .collect::<Result<_, _>>()?;
+
+        // Use par_iter (parallel iterator) provided by rayon
+        gallery_entries.par_iter().for_each(|entry| {
+            let gallery = Self::scan_single_gallery(entry).unwrap();
             if gallery.albums.len() == 0 {
                 debug!("跳过空gallery: {}", gallery);
-                continue;
+                return;
             }
-            info!("{}", gallery);
-            all_galleries.insert(gallery.name.clone(), gallery.clone());
-        }
-        Ok(all_galleries)
+
+            // Use a lock to safely update the HashMap
+            let mut galleries_lock = all_galleries.lock().unwrap();
+            galleries_lock.insert(gallery.name.clone(), gallery.clone());
+        });
+        let x = all_galleries.lock().unwrap().clone();
+        Ok(x)
     }
     //扫描单个相册
     fn scan_single_gallery(entry: &DirEntry) -> ResultAnyErr<Gallery> {
         let gallery_name = entry.file_name().to_string_lossy().into_owned();
-        let mut gallery_size = 0;
-        let mut gallery_albums = HashMap::new();
+        let gallery_size = Arc::new(Mutex::new(0));
+        let gallery_albums = Arc::new(Mutex::new(HashMap::new()));
         //扫描下属影集
-        for album_entry in fs::read_dir(entry.path())? {
-            let album_entry = album_entry?;
-            //album必须是目录
-            if album_entry.file_type()?.is_file() {
-                continue;
+        // Get all album entries
+        let album_entries: Vec<_> = fs::read_dir(entry.path())?.collect::<Result<_, _>>()?;
+
+        // Use par_iter (parallel iterator) provided by rayon
+        album_entries.par_iter().for_each(|album_entry| {
+            // album必须是目录
+            if album_entry.file_type().unwrap().is_file() {
+                return;
             }
-            let album = Self::scan_single_album(&album_entry)?;
+
+            let album = Self::scan_single_album(album_entry).unwrap();
             if album.medias.len() == 0 {
                 debug!("跳过空album: {}", album);
-                continue;
+                return;
             }
-            gallery_albums.insert(album.name.clone(), album.clone());
-            gallery_size += album.size;
-        }
-        let gallery = Gallery::new(gallery_name, gallery_size, gallery_albums);
+
+            // Use a lock to safely update the HashMap and size counter
+            let mut albums_lock = gallery_albums.lock().unwrap();
+            albums_lock.insert(album.name.clone(), album.clone());
+
+            let mut size_lock = gallery_size.lock().unwrap();
+            *size_lock += album.size;
+        });
+        let gallery = Gallery::new(
+            gallery_name,
+            *gallery_size.lock().unwrap(),
+            gallery_albums.lock().unwrap().clone(),
+        );
         Ok(gallery)
     }
     //单个影集
@@ -127,11 +147,9 @@ impl MainService {
             //视频时长
             let duration = media_item::is_video(&path)
                 .then(|| media_item::get_video_duration(path.to_str().unwrap()).unwrap());
-
-            album_medias.insert(
-                name.clone(),
-                MediaItem::new(path, name.clone(), time, size, exif, duration),
-            );
+            let media = MediaItem::new(path, name.clone(), time, size, exif, duration);
+            info!("{}", media.path.display());
+            album_medias.insert(name.clone(), media);
             //累计相册尺寸
             album_size += size;
         }

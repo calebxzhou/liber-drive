@@ -41,23 +41,27 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   @Input() medias!: Media[];
   @Input() index: number = -1;
   @Input() isDisplayViewer!: boolean;
+  @Input() galleryName!: string;
+  @Input() albumName!: string;
   @Output() isDisplayViewerChange = new EventEmitter<boolean>();
   @ViewChildren("videoPlayer") videoPlayers: QueryList<ElementRef> =
     new QueryList();
-  galleryName = "";
-  albumName = "";
+  swiper!: Swiper;
   loadProgress = 0;
-  //现在图片
-  now!: Media;
   //尺寸（载入原图用）
   fullImageSize = "0.0MB";
   //标题
-  title = `载入中....`;
+  title = "";
   //显示图片
   displayingUrl = LOADING_GIF;
   //是否原图
   isOriginalLoaded = false;
+  //是否载入视频
   isVideoLoaded = false;
+  //视频比特率（每秒消耗流量）
+  bitrate = "";
+  //当前图片缩放比例
+  scaleRatio = 1;
   constructor(
     private renderer: Renderer2,
     private router: Router,
@@ -100,11 +104,13 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
         enabled: true,
       },
       zoom: {
-        maxRatio: 10,
+        maxRatio: 3,
       },
       on: {
         zoomChange: (swiper: Swiper, scale: number) => {
+          //放得太大 不允许切图
           swiper.allowTouchMove = scale < 2;
+          this.scaleRatio = scale;
         },
       },
     };
@@ -113,22 +119,16 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     Object.assign(el, params);
     el.initialize();
     this.onSwiperIndexChange(el.swiper, this.medias);
+    this.swiper = el.swiper;
     el.swiper.on("activeIndexChange", (s: Swiper) =>
       this.onSwiperIndexChange(s, this.medias)
     );
   }
   playVideo(media: Media) {
-    /* $("#div_" + media.size).html(`
-    <video
-          controls
-          crossorigin
-          playsinline
-          src="${this.mediaUrl(media, true)}"
-          class="block mx-auto object-contain h-[95vh]"
-          loading="lazy"
-        ></video>
-    `); */
     this.isVideoLoaded = true;
+  }
+  scaleOut() {
+    this.swiper.zoom.out();
   }
   //改变图片时
   onSwiperIndexChange(swiper: Swiper, medias: Media[]) {
@@ -148,17 +148,14 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
       const videoEl: HTMLVideoElement = player.nativeElement;
       videoEl.pause();
     });
+    if (this.isVideo(media) && media.duration) {
+      this.bitrate = toReadableSize(media.size / media.duration);
+    }
   }
   ngOnInit(): void {
     //禁止滚动条
     this.renderer.setStyle(document.body, "overflow", "hidden");
-    this.route.paramMap.subscribe((params) => {
-      this.galleryName = params.get("galleryName")!;
-      this.albumName = params.get("albumName")!;
-      this.now = this.medias[this.index];
 
-      this.update();
-    });
     //返回键逻辑=关闭
     this.platformLocation.onPopState(() => {
       this.close();
@@ -169,33 +166,6 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   }
   close() {
     this.isDisplayViewerChange.emit(false);
-  }
-  update() {
-    /* this.displayingUrl = LOADING_GIF;
-    this.isOriginalLoaded = false;
-    this.now = this.medias[this.index];
-    if (this.isImageNow()) {
-      this.mediaService
-        .fetchMedia(this.galleryName, this.albumName, this.now.name, 0)
-        .subscribe((event: HttpEvent<any>) => {
-          if (event.type === HttpEventType.DownloadProgress) {
-            this.loadProgress = Math.round(
-              (100 * event.loaded) / (event.total ?? 1)
-            );
-          } else if (event.type === HttpEventType.Response) {
-            const blob: Blob = event.body;
-            this.displayingUrl = URL.createObjectURL(blob);
-          }
-        });
-    } */
-  }
-  prev() {
-    if (this.index > 0) this.index--;
-    this.update();
-  }
-  next() {
-    if (this.index < this.medias.length - 1) this.index++;
-    this.update();
   }
   loadOriginal(media: Media) {
     let t1 = Date.now();
@@ -236,5 +206,38 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
       media.name,
       full ? -1 : 0
     );
+  }
+  mediaRecorder: MediaRecorder | undefined;
+  private chunks: BlobPart[] = [];
+
+  startRecording() {
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        this.mediaRecorder = new MediaRecorder(stream);
+        this.mediaRecorder.start();
+
+        this.mediaRecorder.ondataavailable = (e) => {
+          this.chunks.push(e.data);
+        };
+      });
+  }
+
+  stopRecording() {
+    if (this.mediaRecorder) {
+      this.mediaRecorder.stop();
+
+      this.mediaRecorder.onstop = () => {
+        const blob = new Blob(this.chunks, { type: "video/mp4" });
+        this.chunks = [];
+
+        const videoURL = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = videoURL;
+        link.download = "RecordedVideo.mp4";
+        link.click();
+      };
+      this.mediaRecorder = undefined;
+    }
   }
 }

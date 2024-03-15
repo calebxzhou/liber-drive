@@ -37,7 +37,6 @@ export class ImageTbnlComponent implements OnInit, OnDestroy {
   videoDuration = "视频";
   progress: number = 0;
   imageUrl: string | null = null;
-  private fetchSubscription: Subscription | null = null;
   constructor(private ms: MediaService) {}
 
   ngOnInit(): void {
@@ -49,20 +48,12 @@ export class ImageTbnlComponent implements OnInit, OnDestroy {
       this.videoDuration = this.ms.formatDuration(this.media.duration);
     }
     //获取缩略图
-    this.fetchSubscription = this.ms
-      .fetchMedia(this.galleryName, this.albumName, this.media.name, 1)
-      .subscribe((event: HttpEvent<any>) => {
-        if (event.type === HttpEventType.DownloadProgress) {
-          this.progress = Math.round((100 * event.loaded) / (event.total ?? 1));
-        } else if (event.type === HttpEventType.Response) {
-          const blob: Blob = event.body;
-          this.imageUrl = URL.createObjectURL(blob);
-        }
-      });
+    this.imageUrl = this.ms.fetchMediaUrl(
+      this.galleryName,
+      this.albumName,
+      this.media.name,
+      1
+    );
   }
-  ngOnDestroy(): void {
-    if (this.fetchSubscription) {
-      this.fetchSubscription.unsubscribe();
-    }
-  }
+  ngOnDestroy(): void {}
 }

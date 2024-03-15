@@ -31,19 +31,38 @@
         loading="lazy"
       ></video>
       <div
-        class="absolute left-2 bottom-0 text-center text-white mb-1 bg-opacity-70 bg-black"
+        class="absolute left-1/2 bottom-0 transform -translate-x-1/2 text-center text-white mb-1 bg-opacity-70 bg-black"
       >
         <button
+          class="m-1"
           *ngIf="isImage(media) && !isOriginalLoaded"
           (click)="loadOriginal(media)"
         >
           💾原图{{ fullImageSize }}
         </button>
         <button
+          class="m-1"
           *ngIf="isVideo(media) && !isVideoLoaded"
           (click)="playVideo(media)"
         >
-          ▶播放视频
+          ⏯️播放视频&emsp;流量消耗：每秒{{ bitrate }}
+        </button>
+        <!-- <button
+          class="m-1"
+          *ngIf="isVideo(media) && isVideoLoaded && !mediaRecorder"
+          (click)="startRecording()"
+        >
+          ⏺️原画录屏
+        </button>
+        <button
+          class="m-1"
+          *ngIf="isVideo(media) && isVideoLoaded && mediaRecorder"
+          (click)="stopRecording()"
+        >
+          ⏹️停止录屏
+        </button> -->
+        <button class="m-1" *ngIf="scaleRatio > 1" (click)="scaleOut()">
+          🔎缩小
         </button>
       </div>
     </swiper-slide>
