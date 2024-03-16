@@ -9,7 +9,7 @@ import { AlbumGridComponent } from "../album-grid/album-grid.component";
 @Component({
   selector: "lg-gallery",
   standalone: true,
-  imports: [NavbarComponent,AlbumGridComponent],
+  imports: [NavbarComponent, AlbumGridComponent],
   templateUrl: "./gallery.component.html",
   styles: ``,
 })
@@ -19,11 +19,14 @@ export class GalleryComponent implements OnInit {
   ngOnInit() {
     this.route.paramMap.subscribe((params) => {
       this.mserv.fetchGallery(params.get("galleryName")!).subscribe((g) => {
+        g.albums = g.albums.sort();
         this.gallery$ = g;
-      }); 
+      });
     });
   }
-  getTitle(){
-    return `「${this.gallery$.name}」${this.gallery$.albums.length}个影集 ${toReadableSize(this.gallery$.size)}`
+  getTitle() {
+    return `「${this.gallery$.name}」${
+      this.gallery$.albums.length
+    }个影集 ${toReadableSize(this.gallery$.size)}`;
   }
 }
