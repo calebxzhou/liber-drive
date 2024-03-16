@@ -181,7 +181,17 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
           let imageEl: HTMLImageElement = document.getElementById(
             `img_${media.size}`
           ) as HTMLImageElement;
-          imageEl.src = URL.createObjectURL(blob);
+          // Create a new FileReader instance
+          let reader = new FileReader();
+
+          // Define the onload event
+          reader.onloadend = function () {
+            // Once the read operation is finished, set the image source to the Base64 string
+            imageEl.src = reader.result as string;
+          };
+
+          // Start reading the blob as a data URL
+          reader.readAsDataURL(blob);
           this.isOriginalLoaded = true;
           this.snackBar.open(
             `已载入原图(⏰${((t2 - t1) / 1000).toFixed(2)}s)`,
