@@ -35,7 +35,7 @@ import { ImageTbnlComponent } from "../image-tbnl/image-tbnl.component";
   }
   `,
 })
-export class ImageGridComponent implements OnInit {
+export class ImageGridComponent {
   @Input() medias!: Media[];
   @Input() galleryName: string = "";
   @Input() albumName: string = "";
@@ -43,33 +43,5 @@ export class ImageGridComponent implements OnInit {
   constructor(private mediaService: MediaService) {}
   openViewer$(media: Media) {
     this.openViewer.emit(media);
-  }
-  ngOnInit(): void {}
-  thumbnailUrl(media: Media) {
-    let url = this.mediaService.fetchMediaUrl(
-      this.galleryName,
-      this.albumName,
-      media.name,
-      1
-    );
-    return url.replace(/ /g, "%20");
-  }
-  isVideo(media: Media) {
-    return this.mediaService.isVideo(media);
-  }
-  size(media: Media) {
-    return toReadableSize(media.size);
-  }
-  fetchDuration(media: Media): Observable<string> {
-    return from(
-      this.mediaService.getVideoDuration(
-        this.mediaService.fetchMediaUrl(
-          this.galleryName,
-          this.albumName,
-          media.name,
-          -1
-        )
-      )
-    ).pipe(map((sec) => this.mediaService.formatDuration(sec)));
   }
 }

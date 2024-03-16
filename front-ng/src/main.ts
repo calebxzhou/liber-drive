@@ -20,6 +20,7 @@ import { HomeComponent } from "./app/home/home.component";
 import { AlbumComponent } from "./app/album/album.component";
 import { GalleryComponent } from "./app/gallery/gallery.component";
 import { register as registerSwiperElements } from "swiper/element/bundle";
+import { LAZYLOAD_IMAGE_HOOKS, ScrollHooks } from "ng-lazyload-image";
 export const routes: Routes = [
   { path: "home", component: HomeComponent },
   {
@@ -41,5 +42,6 @@ bootstrapApplication(AppComponent, {
     },
     provideRouter(routes, withComponentInputBinding()),
     provideAnimations(),
+    { provide: LAZYLOAD_IMAGE_HOOKS, useClass: ScrollHooks },
   ],
 }).catch((err) => console.error(err));
