@@ -8,7 +8,12 @@
     *ngFor="let group of mediaGroups | keyvalue : reverseOrder"
     class="m-auto justify-center"
   >
-    <p class="text-xl m-4" style="flex-basis: 100%">{{ group.key }}</p>
+    <div
+      class="text-xl p-2 sticky top-16 z-10 bg-white"
+      style="flex-basis: 100%"
+    >
+      {{ group.key }}
+    </div>
     <lg-image-grid
       [galleryName]="galleryName"
       [albumName]="albumName"

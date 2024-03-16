@@ -1,8 +1,9 @@
-<div class="fixed top-0 left-0 w-full h-full bg-black z-10">
+<div class="fixed top-0 left-0 w-full h-full bg-black z-20">
+  <!-- 关闭按钮 -->
+
   <!-- 顶部 -->
-  <div class="block">
-    <!-- 关闭按钮 -->
-    <button class="text-xl float-left" (click)="close()">◀️</button>
+  <div class="flex z-20">
+    <button class="text-2xl" (click)="close()">◀️</button>
     <!-- 文件名 尺寸 -->
     <div class="text-2xs leading-none text-white">
       {{ title }}

@@ -59,7 +59,9 @@ export class AlbumComponent implements OnInit {
           this.medias = medias;
           let groups = this.mediaService.groupMediaByDay(medias);
           this.mediaGroups = groups;
-          this.title = album.name + " " + toReadableSize(album.size);
+          this.title = `${album.name}(${medias.length}) ${toReadableSize(
+            album.size
+          )}`;
           if (mediaName) {
             let media = medias.find((m) => m.name === mediaName);
             if (media) {

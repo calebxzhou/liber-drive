@@ -19,7 +19,9 @@ export class GalleryComponent implements OnInit {
   ngOnInit() {
     this.route.paramMap.subscribe((params) => {
       this.mserv.fetchGallery(params.get("galleryName")!).subscribe((g) => {
-        g.albums = g.albums.sort();
+        g.albums = g.albums.sort((a, b) =>
+          a.name.localeCompare(b.name, "zh-CN-u-co-pinyin")
+        );
         this.gallery$ = g;
       });
     });
