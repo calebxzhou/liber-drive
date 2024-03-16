@@ -1,4 +1,8 @@
-<mat-toolbar color="primary" class="mat-elevation-z4 fixed mb-12 z-20">
+<mat-toolbar
+  color="primary"
+  class="mat-elevation-z4 fixed mb-12 z-20"
+  [class.hide-toolbar]="hideToolbar"
+>
   <button
     (click)="back()"
     mat-icon-button
