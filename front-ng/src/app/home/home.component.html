@@ -8,24 +8,13 @@
     <img class="w-16" src="assets/avatar.webp" />
     <img class="w-7 absolute bottom-0 right-0" src="assets/camera.svg" />
   </div>
-  <div class="flex items-center justify-center m-2">
-    <span class="text-2xs">选择相册</span>
-  </div>
   <div class="mt-6 flex justify-center gap-4">
-    <div
-      class="flex flex-col items-center bg-transparent hover:bg-gray-200 cursor-pointer"
-      (click)="goGallery('situ')"
-    >
-      <img class="w-20" src="assets/situ.svg" />
-      <span class="text-xs">situ活动</span>
-    </div>
-    <div
-      class="flex flex-col items-center bg-transparent hover:bg-gray-200 cursor-pointer"
-      (click)="goGallery('life')"
-    >
-      <img class="w-20" src="assets/life.svg" />
-      <span class="text-xs">日常生活</span>
-    </div>
+    <button mat-raised-button color="accent" (click)="goGallery('situ')">
+      学校活动
+    </button>
+    <button mat-raised-button color="primary" (click)="goGallery('life')">
+      日常生活
+    </button>
   </div>
 </div>
-<div class="absolute bottom-0 inset-x-0 mx-auto w-max">v2.3&emsp;2024.3.16</div>
+<div class="absolute bottom-0 inset-x-0 mx-auto w-max">v2.4&emsp;2024.3.23</div>

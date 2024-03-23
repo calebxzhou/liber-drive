@@ -41,12 +41,22 @@
         >
           💾原图{{ fullImageSize }}
         </button>
+        <!-- <button
+          class="m-1"
+          fileSaver
+          *ngIf="isVideo(media) && !isVideoLoaded"
+          [method]="'GET'"
+          [fileName]="media.name"
+          [url]="mediaUrl(media, true)"
+        >
+          💾下载{{ fullImageSize }}
+        </button> -->
         <button
           class="m-1"
           *ngIf="isVideo(media) && !isVideoLoaded"
           (click)="playVideo(media)"
         >
-          ⏯️播放视频&emsp;流量消耗：每秒{{ bitrate }}
+          ⏯️播放&emsp;每秒{{ bitrate }}流量
         </button>
         <!-- <button
           class="m-1"

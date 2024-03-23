@@ -32,12 +32,18 @@ dependencies:
   '@angular/router':
     specifier: ^17.2.0-next
     version: 17.2.1(@angular/common@17.2.1)(@angular/core@17.2.1)(@angular/platform-browser@17.2.1)(rxjs@7.8.1)
+  file-saver:
+    specifier: ^2.0.5
+    version: 2.0.5
   jquery:
     specifier: ^3.7.1
     version: 3.7.1
   ng-lazyload-image:
     specifier: ^9.1.3
     version: 9.1.3(@angular/common@17.2.1)(@angular/core@17.2.1)(rxjs@7.8.1)
+  ngx-filesaver:
+    specifier: ^17.0.0
+    version: 17.0.0(@types/file-saver@2.0.7)(file-saver@2.0.5)
   rxjs:
     specifier: ~7.8.0
     version: 7.8.1
@@ -3203,6 +3209,10 @@ packages:
       '@types/serve-static': 1.15.5
     dev: true
 
+  /@types/file-saver@2.0.7:
+    resolution: {integrity: sha512-dNKVfHd/jk0SkR/exKGj2ggkB45MAkzvWCaqLUUgkyjITkGNzH8H+yUwr+BLJUBjZOe9w8X3wgmXhZDRg1ED6A==}
+    dev: false
+
   /@types/http-errors@2.0.4:
     resolution: {integrity: sha512-D0CFMMtydbJAegzOyHjtiKPLlvnm3iTZyZRSZoLq2mRhDdmLfIWOCYPfQJ4cu2erKghU++QvjcUjp/5h7hESpA==}
     dev: true
@@ -4590,6 +4600,10 @@ packages:
       escape-string-regexp: 1.0.5
     dev: true
 
+  /file-saver@2.0.5:
+    resolution: {integrity: sha512-P9bmyZ3h/PRG+Nzga+rbdI4OEpNDzAVyy74uVO9ATgzLK6VtAsYybF/+TOCvrc0MO793d6+42lLyZTw7/ArVzA==}
+    dev: false
+
   /fill-range@7.0.1:
     resolution: {integrity: sha512-qOo9F+dMUmC2Lcb4BbVvnKJxTPjCm+RRpe4gDuGrzkL7mEVl/djYSu2OdQ2Pa302N4oqkSg9ir6jaLWJ2USVpQ==}
     engines: {node: '>=8'}
@@ -5735,6 +5749,17 @@ packages:
       '@angular/common': 17.2.1(@angular/core@17.2.1)(rxjs@7.8.1)
       '@angular/core': 17.2.1(rxjs@7.8.1)(zone.js@0.14.4)
       rxjs: 7.8.1
+      tslib: 2.6.2
+    dev: false
+
+  /ngx-filesaver@17.0.0(@types/file-saver@2.0.7)(file-saver@2.0.5):
+    resolution: {integrity: sha512-Ym2U2/mW3osQeVGBs2nps/1VudIJgv0wzUiuFsy0A47kxi3Id3dAeQR6W0K1EMr7YKhqtXLr98PiOdGBlxHv7A==}
+    peerDependencies:
+      '@types/file-saver': ^2.0.0
+      file-saver: ^2.0.0
+    dependencies:
+      '@types/file-saver': 2.0.7
+      file-saver: 2.0.5
       tslib: 2.6.2
     dev: false
 

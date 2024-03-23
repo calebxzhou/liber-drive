@@ -28,11 +28,11 @@ import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 import { Swiper } from "swiper";
-
+import { FileSaverModule } from "ngx-filesaver";
 @Component({
   selector: "lg-media-viewer",
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FileSaverModule],
   templateUrl: "./media-viewer.component.html",
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
