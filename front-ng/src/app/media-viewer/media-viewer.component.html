@@ -16,17 +16,18 @@
         <img
           id="img_{{ media.size }}"
           [src]="mediaUrl(media, false)"
-          *ngIf="!isVideoLoaded"
+          *ngIf="!playingVideo"
           class="block mx-auto object-contain h-[95vh]"
           loading="lazy"
         />
       </div>
       <video
+        id="v_{{ media.size }}"
         #videoPlayer
         controls
         crossorigin
         playsinline
-        *ngIf="isVideo(media) && isVideoLoaded"
+        *ngIf="isVideo(media) && playingVideo?.name === media.name"
         [src]="mediaUrl(media, true)"
         class="block mx-auto object-contain h-[95vh]"
         loading="lazy"
@@ -53,7 +54,7 @@
         </button> -->
         <button
           class="m-1"
-          *ngIf="isVideo(media) && !isVideoLoaded"
+          *ngIf="isVideo(media) && !playingVideo"
           (click)="playVideo(media)"
         >
           ⏯️播放&emsp;每秒{{ bitrate }}流量

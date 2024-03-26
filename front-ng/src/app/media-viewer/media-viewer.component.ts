@@ -51,13 +51,13 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   //尺寸（载入原图用）
   fullImageSize = "0.0MB";
   //标题
-  title = "";
+  title = "请稍等，载入中....";
   //显示图片
   displayingUrl = LOADING_GIF;
   //是否原图
   isOriginalLoaded = false;
   //是否载入视频
-  isVideoLoaded = false;
+  playingVideo: Media | null = null;
   //视频比特率（每秒消耗流量）
   bitrate = "";
   //当前图片缩放比例
@@ -125,7 +125,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     );
   }
   playVideo(media: Media) {
-    this.isVideoLoaded = true;
+    this.playingVideo = media;
   }
   scaleOut() {
     this.swiper.zoom.out();
@@ -142,7 +142,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     this.isOriginalLoaded = false;
-    this.isVideoLoaded = false;
+    this.playingVideo = null;
     //暂停视频
     this.videoPlayers.forEach((player) => {
       const videoEl: HTMLVideoElement = player.nativeElement;
