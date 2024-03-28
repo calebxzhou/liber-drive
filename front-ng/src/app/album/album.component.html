@@ -8,10 +8,26 @@
     *ngFor="let group of mediaGroups | keyvalue : reverseOrder"
     class="m-auto justify-center"
   >
-    <div class="text-xl p-2 sticky top-0 z-10 bg-white">
-      {{ group.key }}
+    <div
+      class="p-2 sticky top-0 z-10 bg-white"
+      (click)="toggleVisibility(group.key)"
+    >
+      <span>{{ date(group.key) }}</span>
+      <span *ngIf="getDateImageAmount(group.key) as imageAmount" class="text-sm"
+        >🖼️{{ imageAmount }}
+      </span>
+      <span *ngIf="getDateVideoAmount(group.key) as videoAmount" class="text-sm"
+        >🎬{{ videoAmount }}
+      </span>
+      <span class="p-2 text-sm hover:bg-slate-300" *ngIf="!isVisible(group.key)"
+        >▼展开</span
+      >
+      <span class="p-2 text-sm hover:bg-slate-300" *ngIf="isVisible(group.key)"
+        >△收起</span
+      >
     </div>
     <lg-image-grid
+      *ngIf="isVisible(group.key)"
       [galleryName]="galleryName"
       [albumName]="albumName"
       [medias]="getMediasByDate(group.key)"

@@ -1,7 +1,8 @@
 use std::collections::HashMap;
-use std::fs;
 use std::io::Write;
 use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use std::sync::{Arc, Mutex};
+use std::{fs, thread};
 
 use axum::body::Body;
 
@@ -24,7 +25,6 @@ use chrono::Local;
 use env_logger::Builder;
 
 use log::LevelFilter;
-use media_item::GalleryInfo;
 use media_sender::handle_file;
 use media_sender::handle_preview;
 use tower_http::cors::CorsLayer;
@@ -76,8 +76,9 @@ async fn main() {
             }
         },
     );
-    let serv = Box::new(MainService::new(&drive_dir));
-    let serv: &'static MainService = Box::leak(serv);
+    let mut serv = MainService::new(&drive_dir);
+    serv.read_more_media_infos();
+    let serv = Box::leak(Box::new(serv));
     let app = Router::new()
         //读取照片视频
         .route(

@@ -27,8 +27,6 @@ export class GalleryComponent implements OnInit {
     });
   }
   getTitle() {
-    return `「${this.gallery$.name}」${
-      this.gallery$.albums.length
-    }个影集 ${toReadableSize(this.gallery$.size)}`;
+    return `「${this.gallery$.name}」${this.gallery$.albums.length}个影集`;
   }
 }

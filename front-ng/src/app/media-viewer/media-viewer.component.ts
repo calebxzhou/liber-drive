@@ -17,7 +17,7 @@ import {
 } from "@angular/core";
 import { Media, ImageExif, GalleryInfo } from "../media/media";
 import { MediaService } from "../media/media.service";
-import { toReadableSize } from "../util";
+import { readableDateTime, toReadableSize } from "../util";
 import { Location } from "@angular/common";
 import { Router, ActivatedRoute } from "@angular/router";
 import { LOADING_GIF } from "../const";
@@ -29,10 +29,17 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 import { Swiper } from "swiper";
 import { FileSaverModule } from "ngx-filesaver";
+import { TextSwitcherComponent } from "../text-switcher/text-switcher.component";
+import { LazyLoadImageModule } from "ng-lazyload-image";
 @Component({
   selector: "lg-media-viewer",
   standalone: true,
-  imports: [CommonModule, FileSaverModule],
+  imports: [
+    CommonModule,
+    LazyLoadImageModule,
+    FileSaverModule,
+    TextSwitcherComponent,
+  ],
   templateUrl: "./media-viewer.component.html",
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
@@ -49,9 +56,8 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   swiper!: Swiper;
   loadProgress = 0;
   //尺寸（载入原图用）
-  fullImageSize = "0.0MB";
-  //标题
-  title = "请稍等，载入中....";
+  fullImageSize = "正在载入 请稍等....";
+
   //显示图片
   displayingUrl = LOADING_GIF;
   //是否原图
@@ -62,6 +68,8 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   bitrate = "";
   //当前图片缩放比例
   scaleRatio = 1;
+  title = "载入中";
+  LOADING_GIF = LOADING_GIF;
   constructor(
     private renderer: Renderer2,
     private router: Router,
@@ -130,19 +138,29 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   scaleOut() {
     this.swiper.zoom.out();
   }
+  getTitles(media: Media) {
+    let titles = [media.name];
+    if (media.exif) {
+      titles = [];
+      let exif = media.exif;
+      titles.push(readableDateTime(exif.shot_time));
+      titles.push(`${exif.make}.${exif.lens}`);
+      titles.push(
+        ` ${exif.focal_len}mm F${exif.av} ${exif.tv}s ISO${exif.iso}`
+      );
+    }
+    return titles;
+  }
   //改变图片时
   onSwiperIndexChange(swiper: Swiper, medias: Media[]) {
     this.index = swiper.activeIndex;
     let media = medias[this.index];
-    this.title = media.name;
+
     this.fullImageSize = toReadableSize(media.size * 3);
-    if (media.exif) {
-      let exif = media.exif;
-      this.title += `⏰${exif.shot_time}📷${exif.make}🔭${exif.lens}📐${exif.focal_len}mm📸${exif.xp_prog}挡👁️F${exif.av}⏱${exif.tv}s@ISO${exif.iso}`;
-    }
 
     this.isOriginalLoaded = false;
     this.playingVideo = null;
+    this.title = this.getTitles(media).join(".");
     //暂停视频
     this.videoPlayers.forEach((player) => {
       const videoEl: HTMLVideoElement = player.nativeElement;

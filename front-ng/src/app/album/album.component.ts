@@ -1,13 +1,14 @@
 import { Component, Input, OnInit } from "@angular/core";
 import { ActivatedRoute, Router, RouterModule } from "@angular/router";
 import { Album, DefaultAlbum, GalleryInfo, Media } from "../media/media";
-import { CommonModule } from "@angular/common";
+import { CommonModule, formatDate } from "@angular/common";
 import { MediaService } from "../media/media.service";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { MediaViewerComponent } from "../media-viewer/media-viewer.component";
-import { toReadableSize } from "../util";
+import { MatExpansionModule } from "@angular/material/expansion";
+import { readableDate, toReadableSize } from "../util";
 import { NavbarComponent } from "../navbar/navbar.component";
 import { ImageGridComponent } from "../image-grid/image-grid.component";
 @Component({
@@ -22,6 +23,7 @@ import { ImageGridComponent } from "../image-grid/image-grid.component";
     RouterModule,
     NavbarComponent,
     ImageGridComponent,
+    MatExpansionModule,
   ],
   templateUrl: "./album.component.html",
   styles: `
@@ -38,6 +40,10 @@ export class AlbumComponent implements OnInit {
   };
   //所有图片
   medias: Media[] = [];
+  imageAmount = 0;
+  videoAmount = 0;
+  //日期折叠
+  visibleGroups: { [key: string]: boolean } = {};
   //日期分组图片
   mediaGroups: Record<string, Media[]> = {};
   constructor(
@@ -58,10 +64,11 @@ export class AlbumComponent implements OnInit {
           let medias = Object.values(this.album.medias);
           this.medias = medias;
           let groups = this.mediaService.groupMediaByDay(medias);
+          this.videoAmount = medias.filter((m) => this.isVideo(m)).length;
+          this.imageAmount = medias.length - this.videoAmount;
           this.mediaGroups = groups;
-          this.title = `${album.name}(${medias.length}) ${toReadableSize(
-            album.size
-          )}`;
+          this.visibleGroups[Object.keys(groups)[0]] = true;
+          this.title = `${album.name}(${medias.length})`;
           if (mediaName) {
             let media = medias.find((m) => m.name === mediaName);
             if (media) {
@@ -74,17 +81,33 @@ export class AlbumComponent implements OnInit {
   getMediasByDate(date: string) {
     return this.mediaGroups[date]!;
   }
+  getDateVideoAmount(date: string) {
+    return this.getMediasByDate(date).filter((m) => this.isVideo(m)).length;
+  }
+  getDateImageAmount(date: string) {
+    return this.getMediasByDate(date).filter((m) => !this.isVideo(m)).length;
+  }
   isVideo(media: Media): boolean {
     return this.mediaService.isVideo(media);
   }
   size(media: Media) {
     return toReadableSize(media.size);
   }
-
+  date(key: string) {
+    return readableDate(key);
+  }
   isDisplayViewer = false;
   viewerIndex = 0;
   openViewer(media: Media) {
     this.isDisplayViewer = true;
     this.viewerIndex = this.medias.findIndex((m) => m === media);
+  }
+
+  toggleVisibility(key: string): void {
+    this.visibleGroups[key] = !this.visibleGroups[key];
+  }
+
+  isVisible(key: string): boolean {
+    return this.visibleGroups[key];
   }
 }

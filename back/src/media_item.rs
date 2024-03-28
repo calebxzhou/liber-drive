@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::io::{Cursor, Read};
+use std::fs::File;
+use std::io::{BufReader, Cursor, Read};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{fmt, fs, path::PathBuf, time::UNIX_EPOCH};
 
 use image::imageops::FilterType;
 use image::DynamicImage;
+use mp4::Mp4Reader;
 use serde::{Serialize, Serializer};
 use webp::WebPMemory;
 
@@ -27,21 +29,14 @@ pub struct MediaItem {
 }
 
 impl MediaItem {
-    pub fn new(
-        path: PathBuf,
-        name: String,
-        time: u64,
-        size: u64,
-        exif: Option<ImageExif>,
-        duration: Option<u16>,
-    ) -> Self {
+    pub fn new(path: PathBuf, name: String, time: u64, size: u64) -> Self {
         Self {
             path,
             name,
             time,
             size,
-            exif,
-            duration,
+            exif: None,
+            duration: None,
         }
     }
     pub fn get_extension(&self) -> String {
@@ -123,7 +118,7 @@ fn matches_extension(path: &PathBuf, extensions: &[&str]) -> bool {
 }
 //是否视频
 pub fn is_video(path: &PathBuf) -> bool {
-    matches_extension(path, &["mp4", "mov"])
+    matches_extension(path, &["mp4"])
 }
 //是否图片
 pub fn is_image(path: &PathBuf) -> bool {
@@ -174,7 +169,7 @@ pub fn get_video_first_frame(video_path: &String) -> ResultAnyErr<DynamicImage> 
 }
 //读取视频时长
 pub fn get_video_duration(path: &str) -> ResultAnyErr<u16> {
-    let output = Command::new("ffprobe")
+    /* let output = Command::new("ffprobe")
         .args(&[
             "-v",
             "error",
@@ -187,26 +182,28 @@ pub fn get_video_duration(path: &str) -> ResultAnyErr<u16> {
         .output()?;
 
     let duration_str = std::str::from_utf8(&output.stdout)?.trim();
-    let duration = duration_str.parse::<f64>()?;
+    let duration = duration_str.parse::<f64>()?; */
+    let file = File::open(path)?;
+    let size = file.metadata()?.len();
+    let reader = BufReader::new(file);
+    let mp4 = Mp4Reader::read_header(reader, size)?;
 
-    Ok(duration as u16)
+    Ok(mp4.duration().as_secs() as u16)
 }
 //相册
 #[derive(Serialize, Clone)]
 pub struct Gallery {
     pub name: String,
-    pub size: u64,
     pub albums: HashMap<String, Album>,
 }
 #[derive(Serialize, Clone)]
 pub struct GalleryInfo {
     pub name: String,
-    pub size: u64,
     pub albums: Vec<AlbumInfo>,
 }
 impl Gallery {
-    pub fn new(name: String, size: u64, albums: HashMap<String, Album>) -> Self {
-        Self { name, size, albums }
+    pub fn new(name: String, albums: HashMap<String, Album>) -> Self {
+        Self { name, albums }
     }
 }
 impl GalleryInfo {
@@ -218,20 +215,13 @@ impl GalleryInfo {
             .collect();
         GalleryInfo {
             name: gallery.name.clone(),
-            size: gallery.size,
             albums,
         }
     }
 }
 impl fmt::Display for Gallery {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{} {}x {}",
-            self.name,
-            self.albums.len(),
-            human_readable_size(self.size)
-        )
+        write!(f, "{} {}x", self.name, self.albums.len())
     }
 }
 
@@ -239,48 +229,26 @@ impl fmt::Display for Gallery {
 #[derive(Serialize, Clone)]
 pub struct Album {
     pub name: String,
-    pub size: u64,
     pub medias: HashMap<String, MediaItem>,
 }
 #[derive(Serialize, Clone)]
 pub struct AlbumInfo {
     pub name: String,
-    pub size: u64,
-    pub media_amount: u32,
 }
 impl AlbumInfo {
     pub fn from_album(album: &Album) -> Self {
         AlbumInfo {
             name: album.name.clone(),
-            size: album.size,
-            media_amount: album.medias.len() as u32,
         }
     }
 }
 impl Album {
-    pub fn new(name: String, size: u64, medias: HashMap<String, MediaItem>) -> Self {
-        Self { name, size, medias }
+    pub fn new(name: String, medias: HashMap<String, MediaItem>) -> Self {
+        Self { name, medias }
     }
-
-    //封面图片ID
-    /* pub fn get_cover_media_id(&self) -> u32 {
-        self.medias
-            .iter()
-            .map(|m| m.id)
-            .collect::<Vec<u32>>()
-            .get(0)
-            .unwrap_or(&0)
-            .clone()
-    } */
 }
 impl fmt::Display for Album {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{} {}x {}",
-            self.name,
-            self.medias.len(),
-            human_readable_size(self.size)
-        )
+        write!(f, "{} {}x ", self.name, self.medias.len())
     }
 }
