@@ -98,7 +98,9 @@ export class AlbumComponent implements OnInit {
       1
     );
   }
-  getVideoDuration(media: Media) {}
+  getVideoDuration(media: Media) {
+    return this.mediaService.formatDuration(media.duration ?? 0);
+  }
   getDateVideoAmount(date: string) {
     return this.getMediasByDate(date).filter((m) => this.isVideo(m)).length;
   }
