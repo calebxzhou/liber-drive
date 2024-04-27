@@ -10,10 +10,26 @@ import { MediaViewerComponent } from "../media-viewer/media-viewer.component";
 import { MatExpansionModule } from "@angular/material/expansion";
 import { readableDate, toReadableSize } from "../util";
 import { NavbarComponent } from "../navbar/navbar.component";
-import { ImageGridComponent } from "../image-grid/image-grid.component";
+import { ImageTbnlComponent } from "../image-tbnl/image-tbnl.component";
+import { LOADING_GIF } from "../const";
+import { LazyLoadImageModule } from "ng-lazyload-image";
 @Component({
   selector: "lg-album",
   standalone: true,
+  templateUrl: "./album.component.html",
+  styles: `
+  .img-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    grid-gap: 1px;
+  }
+  .grid-item{
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    height: 128px;
+  }
+  `,
   imports: [
     CommonModule,
     MatToolbarModule,
@@ -22,17 +38,15 @@ import { ImageGridComponent } from "../image-grid/image-grid.component";
     MediaViewerComponent,
     RouterModule,
     NavbarComponent,
-    ImageGridComponent,
     MatExpansionModule,
+    ImageTbnlComponent,
+    LazyLoadImageModule,
   ],
-  templateUrl: "./album.component.html",
-  styles: `
-  `,
 })
 export class AlbumComponent implements OnInit {
   galleryName!: string;
   albumName!: string;
-
+  defaultImageUrl = LOADING_GIF;
   title: string = "";
   album: Album = DefaultAlbum;
   reverseOrder = (a: { key: string }, b: { key: string }) => {
@@ -40,6 +54,8 @@ export class AlbumComponent implements OnInit {
   };
   //所有图片
   medias: Media[] = [];
+  //要看大图的图片（当前日期下）
+  mediasBeingViewed: Media[] = [];
   imageAmount = 0;
   videoAmount = 0;
   //日期折叠
@@ -56,7 +72,6 @@ export class AlbumComponent implements OnInit {
     this.route.paramMap.subscribe((params) => {
       this.galleryName = params.get("galleryName")!;
       this.albumName = params.get("albumName")!;
-      let mediaName = params.get("mediaName");
       this.mediaService
         .fetchAlbum(this.galleryName, this.albumName)
         .subscribe((album) => {
@@ -69,18 +84,21 @@ export class AlbumComponent implements OnInit {
           this.mediaGroups = groups;
           this.visibleGroups[Object.keys(groups)[0]] = true;
           this.title = `${album.name}(${medias.length})`;
-          if (mediaName) {
-            let media = medias.find((m) => m.name === mediaName);
-            if (media) {
-              this.openViewer(media);
-            }
-          }
         });
     });
   }
   getMediasByDate(date: string) {
     return this.mediaGroups[date]!;
   }
+  getImageUrl(media: Media): string {
+    return this.mediaService.fetchMediaUrl(
+      this.galleryName,
+      this.albumName,
+      media.name,
+      1
+    );
+  }
+  getVideoDuration(media: Media) {}
   getDateVideoAmount(date: string) {
     return this.getMediasByDate(date).filter((m) => this.isVideo(m)).length;
   }
@@ -98,9 +116,10 @@ export class AlbumComponent implements OnInit {
   }
   isDisplayViewer = false;
   viewerIndex = 0;
-  openViewer(media: Media) {
+  openViewer(date: string, index: number) {
     this.isDisplayViewer = true;
-    this.viewerIndex = this.medias.findIndex((m) => m === media);
+    this.mediasBeingViewed = this.mediaGroups[date];
+    this.viewerIndex = index;
   }
 
   toggleVisibility(key: string): void {

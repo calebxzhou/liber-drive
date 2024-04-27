@@ -47,49 +47,28 @@ export function readableDateTime(input: string): string {
   const oneDay = 24 * 60 * 60 * 1000; // milliseconds in one day
   const difference = now.getTime() - inputDate.getTime();
 
-  const daysDifference = Math.round(difference / oneDay);
   const timeString = inputDate.toLocaleTimeString("zh-CN", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   });
 
-  if (daysDifference < 1 && inputDate.getDate() === now.getDate()) {
-    return `今天 ${timeString}`;
-  } else if (daysDifference < 2 && inputDate.getDate() === now.getDate() - 1) {
-    return `昨天 ${timeString}`;
-  } else if (daysDifference < 3 && inputDate.getDate() === now.getDate() - 2) {
-    return `前天 ${timeString}`;
-  } else {
-    // For dates beyond yesterday, format as "Mar 27 19:45"
-    const dateString = inputDate.toLocaleDateString("zh-CN", {
-      year:
-        inputDate.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-      month: "short",
-      day: "numeric",
-    });
-    return `${dateString} ${timeString}`;
-  }
+  // For dates beyond yesterday, format as "Mar 27 19:45"
+  const dateString = inputDate.toLocaleDateString("zh-CN", {
+    year: inputDate.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    month: "short",
+    day: "numeric",
+  });
+  return `${dateString} ${timeString}`;
 }
 export function readableDate(input: string): string {
   const inputDate = new Date(input);
   const now = new Date();
-  const yesterday = new Date(now.setDate(now.getDate() - 1)).toDateString();
-  const beforeDay = new Date(now.setDate(now.getDate() - 1)).toDateString();
 
-  if (inputDate.toDateString() === now.toDateString()) {
-    return "今天";
-  } else if (inputDate.toDateString() === yesterday) {
-    return "昨天";
-  } else if (inputDate.toDateString() === beforeDay) {
-    return "前天";
-  } else {
-    // Format the date as "Mar 27"
-    return inputDate.toLocaleDateString("zh-CN", {
-      year:
-        inputDate.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-      month: "short",
-      day: "numeric",
-    });
-  }
+  // Format the date as "Mar 27"
+  return inputDate.toLocaleDateString("zh-CN", {
+    year: inputDate.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    month: "short",
+    day: "numeric",
+  });
 }

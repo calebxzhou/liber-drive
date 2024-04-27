@@ -26,19 +26,32 @@
         >△收起</span
       >
     </div>
-    <lg-image-grid
-      *ngIf="isVisible(group.key)"
-      [galleryName]="galleryName"
-      [albumName]="albumName"
-      [medias]="getMediasByDate(group.key)"
-      (openViewer)="openViewer($event)"
-    ></lg-image-grid>
+    <div class="img-grid" *ngIf="isVisible(group.key)">
+      <div
+        class="relative cursor-pointer grid-item"
+        *ngFor="let media of getMediasByDate(group.key); index as i"
+        (click)="openViewer(group.key, i)"
+      >
+        <img
+          class="w-48 h-32 object-cover object-center"
+          [defaultImage]="defaultImageUrl"
+          [lazyLoad]="getImageUrl(media)"
+          loading="lazy"
+        />
+        <div
+          *ngIf="isVideo(media)"
+          class="absolute bottom-2 left-2 w-1/2 text-white bg-opacity-70 bg-black text-2xs rounded-3xl pl-1 pr-2"
+        >
+          ▶{{ getVideoDuration(media) }}
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 <lg-media-viewer
   *ngIf="isDisplayViewer"
   [(isDisplayViewer)]="isDisplayViewer"
-  [medias]="medias"
+  [medias]="mediasBeingViewed"
   [index]="viewerIndex"
   [galleryName]="galleryName"
   [albumName]="albumName"

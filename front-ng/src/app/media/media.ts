@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from "uuid";
+
 export interface GalleryInfo {
   name: string;
   size: number;
@@ -19,6 +21,9 @@ export interface Media {
   size: number;
   exif?: ImageExif;
   duration?: number;
+}
+export function getMediaId(media: Media) {
+  return `${media.time}_${media.size}`;
 }
 export const DefaultGallery: GalleryInfo = {
   name: "相册载入中...",
