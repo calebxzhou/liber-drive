@@ -14,9 +14,7 @@ import { MatButtonModule } from "@angular/material/button";
 })
 export class HomeComponent implements OnInit {
   constructor(private router: Router, private titleService: Title) {}
-  ngOnInit(): void {
-    this.titleService.setTitle("嘉乐周的光影世界 2.7");
-  }
+  ngOnInit(): void {}
   goGallery(name: string) {
     this.router.navigate(["/gallery/" + name]);
   }
