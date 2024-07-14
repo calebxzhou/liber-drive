@@ -1,19 +1,23 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::fs::File;
-use std::io::{BufReader, Cursor, Read};
+
+use std::io::{Cursor, Read};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{fmt, fs, path::PathBuf, time::UNIX_EPOCH};
 
 use image::imageops::FilterType;
-use image::DynamicImage;
+use image::{DynamicImage, ImageBuffer};
+use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
+use log::info;
 use mp4::Mp4Reader;
 use serde::{Serialize, Serializer};
 use webp::WebPMemory;
 
-use crate::image_exif::ImageExif;
-use crate::util::{human_readable_size, AnyError, ResultAnyErr};
+use crate::image_exif::{self, ImageExif};
+use crate::util::{
+    date_str_to_timestamp, filename_to_timestamp, human_readable_size, AnyError, ResultAnyErr,
+};
 
 //图片/视频
 #[serde_with::skip_serializing_none]
@@ -39,6 +43,7 @@ impl MediaItem {
             duration: None,
         }
     }
+    //获取扩展名（小写）
     pub fn get_extension(&self) -> String {
         self.path
             .extension()
@@ -90,6 +95,65 @@ impl MediaItem {
         fs::write(&self.get_preview_path(thumbnail), &webp_mem)?;
         Ok(())
     }
+    //更新exif信息
+    pub fn update_exif_info(&mut self) {
+        let exif = ImageExif::from_media_path(&self.path);
+        let mut time = self.time;
+        if let Ok(exif) = &exif {
+            //exif里面成功取时间了 就用exif的
+            if let Ok(_time) = date_str_to_timestamp(&exif.shot_time) {
+                time = _time;
+            } else if let Ok(_time) = filename_to_timestamp(&self.name) {
+                //exif里没有 就去文件名里取
+                time = _time;
+            }
+            //再取不到 就用系统的修改时间
+        }
+        self.time = time;
+        let exif = if let Ok(exif) = exif {
+            Some(exif)
+        } else {
+            None
+        };
+        self.exif = exif;
+    }
+    //更新视频时长信息
+    pub fn update_video_duration(&mut self) {
+        let duration = if is_video(&self.path) {
+            match get_video_duration(self.path.to_str().unwrap()) {
+                Ok(o) => Some(o),
+                Err(e) => {
+                    info!("读取视频时长错误 {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        self.duration = duration;
+    }
+}
+//解码heif图片为DynamicImage
+pub fn decode_heif_image(path: &str) -> ResultAnyErr<DynamicImage> {
+    let lib_heif = LibHeif::new();
+    let ctx = HeifContext::read_from_file(path)?;
+    let handle = ctx.primary_image_handle()?;
+    let image = lib_heif.decode(&handle, ColorSpace::Rgb(RgbChroma::Rgb), None)?;
+    println!("{:?} ", image.color_space());
+
+    let width = image.width();
+    let height = image.height();
+    let planes = image.planes();
+    let interleaved_plane = planes.interleaved.unwrap();
+    let img = match ImageBuffer::from_raw(width, height, interleaved_plane.data.to_owned())
+        .map(DynamicImage::ImageRgb8)
+    {
+        Some(a) => a,
+        None => {
+            return Err(format!("无法解码图片{}", path).into());
+        }
+    };
+    Ok(img)
 }
 //压缩图片为webp格式
 pub fn compress_image_webp(image: &DynamicImage, thumbnail: bool) -> ResultAnyErr<WebPMemory> {
@@ -169,7 +233,7 @@ pub fn get_video_first_frame(video_path: &String) -> ResultAnyErr<DynamicImage> 
 }
 //读取视频时长
 pub fn get_video_duration(path: &str) -> ResultAnyErr<u16> {
-    /* let output = Command::new("ffprobe")
+    let output = Command::new("ffprobe")
         .args(&[
             "-v",
             "error",
@@ -182,73 +246,12 @@ pub fn get_video_duration(path: &str) -> ResultAnyErr<u16> {
         .output()?;
 
     let duration_str = std::str::from_utf8(&output.stdout)?.trim();
-    let duration = duration_str.parse::<f64>()?; */
-    let file = File::open(path)?;
+    let duration = duration_str.parse::<f64>()?;
+    Ok(duration as u16)
+    /* let file = File::open(path)?;
     let size = file.metadata()?.len();
     let reader = BufReader::new(file);
     let mp4 = Mp4Reader::read_header(reader, size)?;
 
-    Ok(mp4.duration().as_secs() as u16)
-}
-//相册
-#[derive(Serialize, Clone)]
-pub struct Gallery {
-    pub name: String,
-    pub albums: HashMap<String, Album>,
-}
-#[derive(Serialize, Clone)]
-pub struct GalleryInfo {
-    pub name: String,
-    pub albums: Vec<AlbumInfo>,
-}
-impl Gallery {
-    pub fn new(name: String, albums: HashMap<String, Album>) -> Self {
-        Self { name, albums }
-    }
-}
-impl GalleryInfo {
-    pub fn from_gallery(gallery: &Gallery) -> Self {
-        let albums: Vec<AlbumInfo> = gallery
-            .albums
-            .values()
-            .map(|a| AlbumInfo::from_album(a))
-            .collect();
-        GalleryInfo {
-            name: gallery.name.clone(),
-            albums,
-        }
-    }
-}
-impl fmt::Display for Gallery {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}x", self.name, self.albums.len())
-    }
-}
-
-//影集
-#[derive(Serialize, Clone)]
-pub struct Album {
-    pub name: String,
-    pub medias: HashMap<String, MediaItem>,
-}
-#[derive(Serialize, Clone)]
-pub struct AlbumInfo {
-    pub name: String,
-}
-impl AlbumInfo {
-    pub fn from_album(album: &Album) -> Self {
-        AlbumInfo {
-            name: album.name.clone(),
-        }
-    }
-}
-impl Album {
-    pub fn new(name: String, medias: HashMap<String, MediaItem>) -> Self {
-        Self { name, medias }
-    }
-}
-impl fmt::Display for Album {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}x ", self.name, self.medias.len())
-    }
+    Ok(mp4.duration().as_secs() as u16) */
 }

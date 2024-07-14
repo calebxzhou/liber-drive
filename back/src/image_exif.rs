@@ -15,7 +15,7 @@ pub struct ImageExif {
     //镜头
     pub lens: String,
     //档位
-    pub xp_prog: char,
+    pub xp_prog: String,
     //焦距
     pub focal_len: String,
     //光圈
@@ -26,30 +26,25 @@ pub struct ImageExif {
     pub iso: String,
     //拍摄时间
     pub shot_time: String,
+    //测光模式
+    pub meter_mode: String,
+    //曝光补偿
+    pub exp_cp: String,
+    //闪光灯
+    pub flash: String,
+    //位置
+    pub loca: Option<GPSLocation>,
+}
+#[derive(Serialize, Clone)]
+pub struct GPSLocation {
+    //高度
+    pub alt: String,
+    //经度
+    pub lng: String,
+    //纬度
+    pub lat: String,
 }
 impl ImageExif {
-    pub fn new(
-        make: String,
-        lens: String,
-        xp_prog: char,
-        focal_len: String,
-        av: String,
-        tv: String,
-        iso: String,
-        shot_time: String,
-    ) -> Self {
-        Self {
-            make,
-            lens,
-            xp_prog,
-            focal_len,
-            av,
-            tv,
-            iso,
-            shot_time,
-        }
-    }
-
     pub fn get_field_value(exif: &exif::Exif, tag: Tag) -> String {
         match exif.get_field(tag, In::PRIMARY) {
             None => "".to_string(),
@@ -73,33 +68,60 @@ impl ImageExif {
         let exif = exifreader.read_from_container(&mut bufreader)?;
 
         //相机厂商
-        let make = Self::trim_exif_field(&exif, Tag::Make);
-
+        let mut make = Self::trim_exif_field(&exif, Tag::Make);
+        /* make = match make.to_lowercase().as_str() {
+            "panasonic" => "松下",
+            "canon" => "佳能",
+            "nikon" => "尼康",
+            "sony" => "索尼",
+        }
+        .to_string(); */
         let model = Self::trim_exif_field(&exif, Tag::Model);
         //型号里包含厂商 则去除
         let model = model.replace(&make, "");
         let make = format!("{} {}", make, model);
-
         //快门时间
         let tv = Self::trim_exif_field(&exif, Tag::ExposureTime);
         //档位 只保留第一个字母
-        let xp_prog = Self::trim_exif_field(&exif, Tag::ExposureProgram)
-            .chars()
-            .next()
-            .unwrap_or(' ')
-            .to_ascii_uppercase();
+        let xp_prog = Self::trim_exif_field(&exif, Tag::ExposureProgram);
 
         let av = Self::trim_exif_field(&exif, Tag::FNumber);
         //镜头
         let lens_make = Self::trim_exif_field(&exif, Tag::LensMake);
         let lens_model = Self::trim_exif_field(&exif, Tag::LensModel);
-        let lens = format!("{} {}", lens_make, lens_model);
-
+        let lens = format!("{}-{}", lens_make, lens_model);
+        //摄影时间
         let shot_time = Self::trim_exif_field(&exif, Tag::DateTimeOriginal);
+        //焦距
         let focal_len = Self::trim_exif_field(&exif, Tag::FocalLength);
+        //iso
         let iso = Self::trim_exif_field(&exif, Tag::PhotographicSensitivity);
-        let exif: ImageExif =
-            ImageExif::new(make, lens, xp_prog, focal_len, av, tv, iso, shot_time);
+        //测光模式
+        let meter_mode = Self::trim_exif_field(&exif, Tag::MeteringMode);
+        //曝光补偿
+        let exp_cp = Self::trim_exif_field(&exif, Tag::ExposureBiasValue);
+        //闪光灯
+        let flash = Self::trim_exif_field(&exif, Tag::Flash);
+        //GPS 高度
+        let alt = Self::trim_exif_field(&exif, Tag::GPSAltitude);
+        //纬度
+        let lat = Self::trim_exif_field(&exif, Tag::GPSLatitude);
+        //经度
+        let lng = Self::trim_exif_field(&exif, Tag::GPSLongitude);
+        let exif: ImageExif = ImageExif {
+            make,
+            lens,
+            xp_prog,
+            focal_len,
+            av,
+            tv,
+            iso,
+            shot_time,
+            meter_mode,
+            exp_cp,
+            flash,
+            loca: Some(GPSLocation { alt, lat, lng }),
+        };
         Ok(exif)
     }
 }

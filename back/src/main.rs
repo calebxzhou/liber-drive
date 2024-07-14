@@ -31,6 +31,7 @@ use tower_http::cors::CorsLayer;
 
 use crate::main_service::MainService;
 use tower_http::compression::CompressionLayer;
+pub mod album;
 pub mod image_exif;
 pub mod main_service;
 mod media_item;
@@ -64,6 +65,7 @@ async fn main() {
          headers: &HeaderMap,
          _extensions: &Extensions| {
             //只压缩json和普通文本
+            //不压别的
             if let Some(content_type) = headers.get(CONTENT_TYPE) {
                 let content_type = content_type.to_str().unwrap_or_default();
                 if content_type == "application/json" {
@@ -77,21 +79,12 @@ async fn main() {
         },
     );
     let mut serv = MainService::new(&drive_dir);
-    serv.read_more_media_infos();
     let serv = Box::leak(Box::new(serv));
     let app = Router::new()
         //读取照片视频
-        .route(
-            "/gallery/:galleryName/:albumName/:mediaName",
-            get(get_media).with_state(serv),
-        )
-        //读取album
-        .route(
-            "/gallery/:galleryName/:albumName",
-            get(get_album).with_state(serv),
-        )
-        //读取gallery
-        .route("/gallery/:name", get(get_gallery).with_state(serv))
+        .route("/:albumName/:mediaName", get(get_media).with_state(serv))
+        //读取影集
+        .route("/:albumName", get(get_album).with_state(serv))
         .layer(compression_layer)
         .layer(
             CorsLayer::new()
@@ -105,6 +98,7 @@ async fn main() {
             .await
             .unwrap();
     axum::serve(listener, app).await.unwrap();
+    //todo 多线程建立缩略图 读取exif和视频时长
 }
 macro_rules! match_or_404 {
     ($match:expr) => {
@@ -114,22 +108,13 @@ macro_rules! match_or_404 {
         }
     };
 }
-//获取相册
-async fn get_gallery(
-    Path(name): Path<String>,
-    State(serv): State<&MainService>,
-) -> impl IntoResponse {
-    let g = match_or_404!(serv.galleries_info.get(&name));
-    Json(g).into_response()
-}
 //获取影集
 async fn get_album(
-    Path((gallery_name, album_name)): Path<(String, String)>,
+    Path(album_name): Path<String>,
     Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
 ) -> impl IntoResponse {
-    let gallery = match_or_404!(serv.galleries.get(&gallery_name));
-    let album = match_or_404!(gallery.albums.get(&album_name));
+    let album = match_or_404!(serv.albums.get(&album_name));
     //请求缩略图，返回第一张的名字
     if params.contains_key("tbnl") {
         if let Some(first) = album.medias.iter().next() {
@@ -140,12 +125,11 @@ async fn get_album(
 }
 async fn get_media(
     headers: HeaderMap,
-    Path((gallery_name, album_name, media_name)): Path<(String, String, String)>,
+    Path((album_name, media_name)): Path<(String, String)>,
     Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
 ) -> Response<Body> {
-    let gallery = match_or_404!(serv.galleries.get(&gallery_name));
-    let album = match_or_404!(gallery.albums.get(&album_name));
+    let album = match_or_404!(serv.albums.get(&album_name));
     let media = match_or_404!(album.medias.get(&media_name));
 
     //读取预览
