@@ -9,35 +9,40 @@ use std::path::PathBuf;
 use walkdir::WalkDir;
 
 use crate::media_item::{self, MediaItem};
-
+pub type AlbumList = HashMap<String, Album>;
+#[derive(Clone)]
 pub struct MainService {
-    pub albums: HashMap<String, Album>,
+    pub albums: AlbumList,
 }
 unsafe impl Send for MainService {}
 impl MainService {
-    pub fn new(drive_dir: &PathBuf) -> Self {
-        let albums = Self::scan_all_albums(drive_dir).expect("扫描相册错误！");
+    pub fn new(drive_dirs: &Vec<PathBuf>) -> Self {
+        let albums = Self::scan_all_albums(drive_dirs).expect("扫描相册错误！");
         info!("共{}个相册", albums.len());
         Self { albums }
     }
-    fn scan_all_albums(drive_dir: &PathBuf) -> ResultAnyErr<HashMap<String, Album>> {
+    fn scan_all_albums(drive_dirs: &Vec<PathBuf>) -> ResultAnyErr<AlbumList> {
         let mut all_albums = HashMap::new();
-        // Get all gallery entries
-        let dir_entries = fs::read_dir(drive_dir)
-            .unwrap()
-            .filter(|e| e.as_ref().unwrap().file_type().unwrap().is_dir())
-            .map(|e| e.unwrap())
-            .collect::<Vec<DirEntry>>();
-        for entry in dir_entries {
-            let album = Self::scan_single_album(entry).unwrap();
-            if album.medias.len() == 0 {
-                debug!("跳过空gallery: {}", album);
-                continue;
+        for drive_dir in drive_dirs {
+            info!("开始扫描{:?}", drive_dir);
+            // Get all gallery entries
+            let dir_entries = fs::read_dir(drive_dir)
+                .unwrap()
+                .filter(|e| e.as_ref().unwrap().file_type().unwrap().is_dir())
+                .map(|e| e.unwrap())
+                .collect::<Vec<DirEntry>>();
+            for entry in dir_entries {
+                let album = Self::scan_single_album(entry).unwrap();
+                if album.medias.len() == 0 {
+                    info!("跳过空album: {}", album);
+                    continue;
+                }
+                all_albums.insert(album.name.clone(), album);
             }
-            all_albums.insert(album.name.clone(), album);
         }
         Ok(all_albums)
     }
+
     //单个影集
     fn scan_single_album(album_entry: DirEntry) -> ResultAnyErr<Album> {
         let album_path = album_entry.path();
@@ -69,5 +74,4 @@ impl MainService {
             album_medias,
         ))
     }
-    //读取拍摄参数等更多信息
 }

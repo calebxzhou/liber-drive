@@ -15,7 +15,6 @@ bytes-stream = "0.0.3"
 tokio-util = "0.7.10"
 tower-http = { version = "0.5.2", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
-axum = "0.7"
 log = "0.4"
 env_logger = "0.11"
 rayon = "1.9.0"
@@ -40,6 +39,10 @@ serde_with = "3.7.0"
 mp4 = "0.14.0"
 libheif-sys = "2.1.1"
 libheif-rs = "1.0.2"
+rocket = { version = "0.5.1", features = ["json"] }
+serde_qs = "0.13.0"
+rocket_async_compression = "0.6.0"
+rocket_cors = "0.6.0"
 [build-dependencies]
 bindgen = "0.65.1"
 

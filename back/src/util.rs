@@ -1,13 +1,14 @@
 use std::{
     fs::File,
-    io::{BufReader, Read, Write},
+    io::{self, BufRead, BufReader, Read, Write},
     path::PathBuf,
 };
 
 use axum::http::HeaderValue;
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
+use env_logger::Builder;
 use fs_extra::file;
-use log::info;
+use log::{info, LevelFilter};
 
 pub type AnyError = Box<dyn std::error::Error>;
 pub type ResultAnyErr<T> = Result<T, AnyError>;
@@ -79,20 +80,39 @@ pub fn filename_to_timestamp(filename: &str) -> Result<u64, AnyError> {
     // Parse the date and time string
 }
 //载入工作目录
-pub fn load_drive_dir() -> PathBuf {
+pub fn load_drive_dirs() -> ResultAnyErr<Vec<PathBuf>> {
     let path = std::path::Path::new("./drive_dir.txt");
-    let mut file = if path.exists() {
-        File::open(path).unwrap()
+    let file = if path.exists() {
+        File::open(path)?
     } else {
-        let mut file = File::create(path).unwrap();
-        let _ = file.write_all(b".");
+        let mut file = File::create(path)?;
+        file.write_all(b".")?;
         file
     };
-    let mut contents = String::new();
-    let _dir = file.read_to_string(&mut contents).unwrap();
-    contents = contents.trim().to_owned();
-    info!("工作目录：{}", contents);
-    let dir = PathBuf::from(contents).canonicalize().unwrap();
-    info!("工作目录：{}", dir.display().to_string());
-    dir
+    let reader = io::BufReader::new(file);
+    let mut dirs = Vec::new();
+    for line in reader.lines() {
+        let line = line?;
+        let line = line.trim().to_owned();
+        info!("工作目录：{}", line);
+        let dir = PathBuf::from(line).canonicalize()?;
+        info!("工作目录：{}", dir.display().to_string());
+        dirs.push(dir);
+    }
+    Ok(dirs)
+}
+//载入日志
+pub fn logger_init() {
+    Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} [{}] - {}",
+                Local::now().format("%Y-%m-%dT%H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .filter(None, LevelFilter::Info)
+        .init();
 }

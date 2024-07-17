@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 use std::{fmt, fs, path::PathBuf, time::UNIX_EPOCH};
 
 use image::imageops::FilterType;
-use image::{DynamicImage, ImageBuffer};
+use image::{error, DynamicImage, ImageBuffer};
 use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
 use log::info;
 use mp4::Mp4Reader;
@@ -69,7 +69,8 @@ impl MediaItem {
     pub fn get_preview(&self, thumbnail: bool) -> ResultAnyErr<Vec<u8>> {
         //没预览
         if !self.is_preview_created(thumbnail) {
-            self.create_preview(thumbnail)?;
+            //返回空的
+            return Err("缩略图不存在".into());
         }
         let mut file = std::fs::File::open(&self.get_preview_path(thumbnail))?;
         let mut buffer = Vec::new();
@@ -78,16 +79,25 @@ impl MediaItem {
     }
     //创建预览
     pub fn create_preview(&self, thumbnail: bool) -> ResultAnyErr<()> {
+        if self.is_preview_created(thumbnail) {
+            return Ok(());
+        }
         let path = &self.path;
+        info!("正在创建缩略图{:?}", path);
 
         let image = if is_video(path) {
             //是视频 截取第一帧
             get_video_first_frame(&path.display().to_string())?
+        } else if is_heif_image(path) {
+            decode_heif_image(
+                path.to_str()
+                    .ok_or(format!("无法解码图片路径{:?}，包含无效字符", path))?,
+            )?
         } else if is_image(path) {
             //是图片
             image::open(path)?
         } else {
-            return Err("nor img/video!".into());
+            return Err(format!("{:?}不是照片视频", path).into());
         };
         //缩略图
         let webp_mem = compress_image_webp(&image, thumbnail)?.to_vec();
@@ -95,11 +105,53 @@ impl MediaItem {
         fs::write(&self.get_preview_path(thumbnail), &webp_mem)?;
         Ok(())
     }
-    //更新exif信息
-    pub fn update_exif_info(&mut self) {
+    //exif信息缓存路径
+    pub fn get_exif_cache_path(&self) -> PathBuf {
+        Path::new("cache").join("exif").join(format!(
+            "exif_{}_{}.json",
+            self.size,
+            self.name.to_lowercase()
+        ))
+    }
+    //创建exif信息缓存
+    pub fn create_exif_cache(&self) -> ResultAnyErr<()> {
         let exif = ImageExif::from_media_path(&self.path);
+        if let Ok(exif) = exif {
+            let json = serde_json::to_string(&exif)?;
+            fs::write(&self.get_exif_cache_path(), json)?;
+        }
+        Ok(())
+    }
+    //读取exif信息缓存
+    pub fn read_exif_cache(&mut self) -> ResultAnyErr<()> {
+        todo!()
+    }
+    //视频时长信息缓存路径
+    pub fn get_video_duration_cache_path(&self) -> PathBuf {
+        Path::new("cache").join("video").join(format!(
+            "duration_{}_{}.txt",
+            self.size,
+            self.name.to_lowercase()
+        ))
+    }
+    //创建视频时长信息缓存
+    pub fn create_video_duration_cache(&self) -> ResultAnyErr<()> {
+        let duration = if is_video(&self.path) {
+            get_video_duration(self.path.to_str().unwrap())?
+        } else {
+            return Err(format!("{}不是视频 无法获取视频时长", self.name).into());
+        };
+        fs::write(&self.get_video_duration_cache_path(), duration.to_string())?;
+        Ok(())
+    }
+    //读取视频时长信息缓存
+    pub fn read_video_duration_cache(&mut self) -> ResultAnyErr<()> {
+        todo!()
+    }
+    //更新照片修改时间（从exif/文件名读取）
+    pub fn update_media_time(&mut self) {
         let mut time = self.time;
-        if let Ok(exif) = &exif {
+        if let Some(exif) = &self.exif {
             //exif里面成功取时间了 就用exif的
             if let Ok(_time) = date_str_to_timestamp(&exif.shot_time) {
                 time = _time;
@@ -107,30 +159,9 @@ impl MediaItem {
                 //exif里没有 就去文件名里取
                 time = _time;
             }
-            //再取不到 就用系统的修改时间
+            //再取不到 就用系统的修改时间（什么都不动）
         }
         self.time = time;
-        let exif = if let Ok(exif) = exif {
-            Some(exif)
-        } else {
-            None
-        };
-        self.exif = exif;
-    }
-    //更新视频时长信息
-    pub fn update_video_duration(&mut self) {
-        let duration = if is_video(&self.path) {
-            match get_video_duration(self.path.to_str().unwrap()) {
-                Ok(o) => Some(o),
-                Err(e) => {
-                    info!("读取视频时长错误 {}", e);
-                    None
-                }
-            }
-        } else {
-            None
-        };
-        self.duration = duration;
     }
 }
 //解码heif图片为DynamicImage
@@ -186,7 +217,7 @@ pub fn is_video(path: &PathBuf) -> bool {
 }
 //是否图片
 pub fn is_image(path: &PathBuf) -> bool {
-    matches_extension(path, &["png", "jpg"])
+    matches_extension(path, &["png", "jpg"]) || is_heif_image(path)
 }
 pub fn is_heif_image(path: &PathBuf) -> bool {
     matches_extension(path, &["heif", "heic"])

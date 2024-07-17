@@ -14,7 +14,7 @@ use tokio::{fs::File, io::AsyncSeekExt};
 use tokio_util::io::ReaderStream;
 
 use crate::{
-    media_item::{is_image, is_video, MediaItem},
+    media_item::{is_heif_image, is_image, is_video, MediaItem},
     util::{convert_http_date_to_u64, convert_u64_to_http_date},
 };
 
@@ -42,13 +42,13 @@ fn parse_range(range: &str) -> Option<Range> {
     }
     None
 }
-pub async fn handle_preview(media: &MediaItem,tbnl:bool, headers: &HeaderMap) -> Response<Body> {
+pub async fn handle_preview(media: &MediaItem, tbnl: bool, headers: &HeaderMap) -> Response<Body> {
     let modified = media.time;
     let image = match media.get_preview(tbnl) {
         Ok(o) => o,
         Err(e) => {
             return Response::builder()
-                .status(500)
+                .status(404)
                 .body(Body::from(format!(
                     "Preview Err! {}, {}",
                     &media.path.display().to_string(),
@@ -106,7 +106,9 @@ pub async fn handle_file(media: &MediaItem, headers: &HeaderMap) -> Response<Bod
 
     let resp = resp.header(ACCEPT_RANGES, "bytes").header(
         CONTENT_TYPE,
-        if is_image(&media.path) {
+        if is_heif_image(&media.path) {
+            "image/heic"
+        } else if is_image(&media.path) {
             "image/jpeg"
         } else if is_video(&media.path) {
             "video/mp4"
