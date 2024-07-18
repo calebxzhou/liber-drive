@@ -4,7 +4,6 @@ use std::{
     path::PathBuf,
 };
 
-use axum::http::HeaderValue;
 use chrono::{DateTime, Local, NaiveDateTime, TimeZone, Utc};
 use env_logger::Builder;
 use fs_extra::file;
@@ -28,7 +27,7 @@ pub fn human_readable_size(bytes: u64) -> String {
     format!("{:.2} {}", size, UNITS[i])
 }
 
-pub fn convert_http_date_to_u64(header_value: &HeaderValue) -> Result<u64, AnyError> {
+/* pub fn convert_http_date_to_u64(header_value: &HeaderValue) -> Result<u64, AnyError> {
     // Convert the HeaderValue to a str
     let str_value = header_value.to_str()?;
 
@@ -39,7 +38,7 @@ pub fn convert_http_date_to_u64(header_value: &HeaderValue) -> Result<u64, AnyEr
     let timestamp = datetime.timestamp() as u64;
 
     Ok(timestamp)
-}
+} */
 pub fn convert_u64_to_http_date(timestamp: u64) -> Result<String, AnyError> {
     // Convert the u64 timestamp to an i64
     let timestamp_i64: i64 = timestamp.try_into()?;
