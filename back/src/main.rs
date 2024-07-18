@@ -15,6 +15,8 @@ use main_service::AlbumList;
 use media_item::{is_image, is_video};
 use media_sender::handle_file;
 use media_sender::handle_preview;
+use rocket::figment::value::magic::RelativePathBuf;
+use rocket::fs::{relative, FileServer};
 use rocket::http::Method;
 use rocket::State;
 use rocket_async_compression::Compression;
@@ -49,10 +51,22 @@ fn rocket() -> _ {
                 .collect(),
         )
         .allow_credentials(true);
-    let serv = MainService::new(&drive_dirs);
+    let mut serv = MainService::new(&drive_dirs);
     let serv_copy = serv.clone();
+    info!("读取exif信息");
+    for (album_name, album) in &mut serv.albums {
+        println!("Album: {}", album_name);
+        for (media_name, media_item) in &mut album.medias {
+            if is_image(&media_item.path) {
+                media_item.create_exif_cache();
+                media_item.read_exif_cache();
+            } else if is_video(&media_item.path) {
+                media_item.create_video_duration_cache();
+                media_item.read_video_duration_cache();
+            }
+        }
+    }
     tokio::spawn(async move {
-        info!("开始创建缩略图");
         for (album_name, album) in serv_copy.albums {
             println!("Album: {}", album_name);
             for (media_name, media_item) in album.medias {
@@ -60,20 +74,20 @@ fn rocket() -> _ {
                     media_item.create_preview(true);
                     media_item.create_preview(false);
                 });
-                /*  if is_image(&media_item.path) {
-                    // media_item.update_exif_info();
-                } else if is_video(&media_item.path) {
-                    // media_item.update_video_duration();
-                } */
             }
         }
     });
-    info!("读取exif信息");
 
-    let server = rocket::custom(config)
+    let mut server = rocket::custom(config)
         .manage(serv)
         .mount("/", routes![get_album])
+        .mount("/cache", FileServer::from(relative!("cache")))
         .attach(cors.to_cors().unwrap());
+    for (index, dir) in drive_dirs.iter().enumerate() {
+        //let path = format!("/files/{}", index);
+        info!("挂载点：{:?}", dir);
+        server = server.mount("/", FileServer::from(dir));
+    }
     if cfg!(debug_assertions) {
         server
     } else {
@@ -101,7 +115,7 @@ async fn main() {
     });
 } */
 
-async fn get_media(
+/* async fn get_media(
     // headers: HeaderMap,
     Path((album_name, media_name)): Path<(String, String)>,
     Query(params): Query<HashMap<String, String>>,
@@ -121,7 +135,7 @@ async fn get_media(
     }
     StatusCode::NOT_FOUND.into_response()
 }
-
+ */
 //获取影集
 use rocket::serde::json::Json;
 #[get("/<album_name>", format = "json")]

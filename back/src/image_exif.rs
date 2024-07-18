@@ -3,12 +3,12 @@ use std::io::BufReader;
 use std::path::PathBuf;
 
 use exif::{In, Tag};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::util::ResultAnyErr;
 //照片摄影参数
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ImageExif {
     //相机
     pub make: String,
@@ -35,7 +35,7 @@ pub struct ImageExif {
     //位置
     pub loca: Option<GPSLocation>,
 }
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct GPSLocation {
     //高度
     pub alt: String,

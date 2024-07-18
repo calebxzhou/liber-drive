@@ -113,8 +113,21 @@ impl MediaItem {
             self.name.to_lowercase()
         ))
     }
+    //视频时长信息缓存路径
+    pub fn get_video_duration_cache_path(&self) -> PathBuf {
+        Path::new("cache").join("video").join(format!(
+            "duration_{}_{}.txt",
+            self.size,
+            self.name.to_lowercase()
+        ))
+    }
     //创建exif信息缓存
     pub fn create_exif_cache(&self) -> ResultAnyErr<()> {
+        info!("正在创建exif缓存 {:?}", self.path);
+        if self.get_exif_cache_path().exists() {
+            info!("缓存已存在，不需要创建");
+            return Ok(());
+        }
         let exif = ImageExif::from_media_path(&self.path);
         if let Ok(exif) = exif {
             let json = serde_json::to_string(&exif)?;
@@ -124,18 +137,34 @@ impl MediaItem {
     }
     //读取exif信息缓存
     pub fn read_exif_cache(&mut self) -> ResultAnyErr<()> {
-        todo!()
+        let path = self.get_exif_cache_path();
+        if !path.exists() {
+            info!("{:?} 缓存不存在", path);
+            return Ok(());
+        }
+        let data = fs::read_to_string(path)?;
+        let exif: ImageExif = serde_json::from_str(&data)?;
+        self.exif = Some(exif);
+        Ok(())
     }
-    //视频时长信息缓存路径
-    pub fn get_video_duration_cache_path(&self) -> PathBuf {
-        Path::new("cache").join("video").join(format!(
-            "duration_{}_{}.txt",
-            self.size,
-            self.name.to_lowercase()
-        ))
+    //读取视频时长信息缓存
+    pub fn read_video_duration_cache(&mut self) -> ResultAnyErr<()> {
+        let path = self.get_video_duration_cache_path();
+        if !path.exists() {
+            info!("{:?} 缓存不存在", path);
+            return Ok(());
+        }
+        let data = fs::read_to_string(path)?.parse::<u16>()?;
+        self.duration = Some(data);
+        Ok(())
     }
     //创建视频时长信息缓存
     pub fn create_video_duration_cache(&self) -> ResultAnyErr<()> {
+        info!("正在创建视频时长缓存 {:?}", self.path);
+        if self.get_exif_cache_path().exists() {
+            info!("缓存已存在，不需要创建");
+            return Ok(());
+        }
         let duration = if is_video(&self.path) {
             get_video_duration(self.path.to_str().unwrap())?
         } else {
@@ -143,10 +172,6 @@ impl MediaItem {
         };
         fs::write(&self.get_video_duration_cache_path(), duration.to_string())?;
         Ok(())
-    }
-    //读取视频时长信息缓存
-    pub fn read_video_duration_cache(&mut self) -> ResultAnyErr<()> {
-        todo!()
     }
     //更新照片修改时间（从exif/文件名读取）
     pub fn update_media_time(&mut self) {
