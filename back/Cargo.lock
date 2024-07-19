@@ -1224,17 +1224,15 @@ dependencies = [
  "fs_extra",
  "image",
  "kamadak-exif",
- "lazy_static",
  "libheif-rs",
  "libheif-sys",
  "log",
- "mime",
- "mime_guess",
  "mp4",
  "pretty-bytes",
  "rand",
  "rayon",
  "rocket",
+ "rocket-cache-response",
  "rocket_async_compression",
  "rocket_cors",
  "serde",
@@ -1244,7 +1242,6 @@ dependencies = [
  "time 0.1.45",
  "tokio",
  "tokio-util",
- "tower",
  "tower-http",
  "url",
  "walkdir",
@@ -1869,6 +1866,15 @@ dependencies = [
  "ubyte",
  "version_check",
  "yansi",
+]
+
+[[package]]
+name = "rocket-cache-response"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "062ac00240bc339c96847c82b5ecf4d8ac3a4ee3e00c507cacf25ddf4f10a449"
+dependencies = [
+ "rocket",
 ]
 
 [[package]]

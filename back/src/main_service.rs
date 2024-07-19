@@ -8,16 +8,16 @@ use std::io::{stdout, Write};
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
-use crate::media_item::{self, MediaItem};
+use crate::media_item::{self, is_image, is_video, MediaItem};
 pub type AlbumList = HashMap<String, Album>;
 #[derive(Clone)]
 pub struct MainService {
     pub albums: AlbumList,
 }
-unsafe impl Send for MainService {}
 impl MainService {
     pub fn new(drive_dirs: &Vec<PathBuf>) -> Self {
         let albums = Self::scan_all_albums(drive_dirs).expect("扫描相册错误！");
+
         info!("共{}个相册", albums.len());
         Self { albums }
     }
@@ -66,7 +66,22 @@ impl MainService {
             let size = media_item::get_file_size(&path)?;
             let time = media_item::get_file_created_time(&path)?;
 
-            let media = MediaItem::new(path, name.clone(), time, size);
+            let mut media = MediaItem::new(path, name.clone(), time, size);
+            if is_image(&media.path) {
+                if let Err(e) = media.create_exif_cache() {
+                    info!("创建exif错误，{:?}", e);
+                }
+                if let Err(e) = media.read_exif_cache() {
+                    info!("读取exif错误，{:?}", e);
+                }
+            } else if is_video(&media.path) {
+                if let Err(e) = media.create_video_duration_cache() {
+                    info!("创建video cache错误，{:?}", e);
+                };
+                if let Err(e) = media.read_video_duration_cache() {
+                    info!("读取video cache错误，{:?}", e);
+                };
+            }
             album_medias.insert(name.clone(), media);
         }
         Ok(Album::new(

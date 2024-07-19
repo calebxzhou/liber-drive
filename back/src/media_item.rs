@@ -80,6 +80,7 @@ impl MediaItem {
     //创建预览
     pub fn create_preview(&self, thumbnail: bool) -> ResultAnyErr<()> {
         if self.is_preview_created(thumbnail) {
+            debug!("图片{:?}已有缩略图", self.path);
             return Ok(());
         }
         let path = &self.path;
@@ -103,6 +104,7 @@ impl MediaItem {
         let webp_mem = compress_image_webp(&image, thumbnail)?.to_vec();
         //保存 缓存
         fs::write(&self.get_preview_path(thumbnail), &webp_mem)?;
+        info!("已创建缩略图，大小{}", webp_mem.len());
         Ok(())
     }
     //exif信息缓存路径
@@ -123,11 +125,11 @@ impl MediaItem {
     }
     //创建exif信息缓存
     pub fn create_exif_cache(&self) -> ResultAnyErr<()> {
-        info!("正在创建exif缓存 {:?}", self.path);
         if self.get_exif_cache_path().exists() {
-            info!("缓存已存在，不需要创建");
+            debug!("缓存已存在，不需要创建");
             return Ok(());
         }
+        info!("正在创建exif缓存 {:?}", self.path);
         let exif = ImageExif::from_media_path(&self.path);
         if let Ok(exif) = exif {
             let json = serde_json::to_string(&exif)?;
@@ -160,11 +162,11 @@ impl MediaItem {
     }
     //创建视频时长信息缓存
     pub fn create_video_duration_cache(&self) -> ResultAnyErr<()> {
-        info!("正在创建视频时长缓存 {:?}", self.path);
-        if self.get_exif_cache_path().exists() {
-            info!("缓存已存在，不需要创建");
+        if self.get_video_duration_cache_path().exists() {
+            debug!("缓存已存在，不需要创建");
             return Ok(());
         }
+        info!("正在创建视频时长缓存 {:?}", self.path);
         let duration = if is_video(&self.path) {
             get_video_duration(self.path.to_str().unwrap())?
         } else {
@@ -242,7 +244,7 @@ pub fn is_video(path: &PathBuf) -> bool {
 }
 //是否图片
 pub fn is_image(path: &PathBuf) -> bool {
-    matches_extension(path, &["png", "jpg"]) || is_heif_image(path)
+    matches_extension(path, &["jpg"]) || is_heif_image(path)
 }
 pub fn is_heif_image(path: &PathBuf) -> bool {
     matches_extension(path, &["heif", "heic"])

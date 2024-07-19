@@ -13,13 +13,12 @@ use album::Album;
 use log::{error, info};
 use main_service::AlbumList;
 use media_item::{is_image, is_video};
-use media_sender::handle_file;
-use media_sender::handle_preview;
 use rocket::figment::value::magic::RelativePathBuf;
-use rocket::fs::{relative, FileServer};
+use rocket::fs::{relative, FileServer, NamedFile};
 use rocket::http::Method;
 use rocket::State;
 use rocket_async_compression::Compression;
+use rocket_cache_response::CacheResponse;
 use rocket_cors::{AllowedOrigins, CorsOptions};
 use tower_http::cors::CorsLayer;
 
@@ -32,16 +31,52 @@ mod media_item;
 pub mod media_sender;
 mod test;
 mod util;
+use rocket::serde::json::Json;
 use serde::Deserialize;
+
+#[get("/albums")]
+fn get_albums(serv: &State<MainService>) -> Json<&AlbumList> {
+    Json(&serv.albums)
+}
+#[get("/media/<album_name>/<media_name>")]
+async fn get_media(
+    album_name: String,
+    media_name: String,
+    serv: &State<MainService>,
+) -> CacheResponse<Option<NamedFile>> {
+    CacheResponse::Public {
+        responder: if let Some(album) = serv.albums.get(&album_name) {
+            if let Some(media) = album.medias.get(&media_name) {
+                NamedFile::open(&media.path).await.ok()
+            } else {
+                None
+            }
+        } else {
+            None
+        },
+
+        max_age: 60 * 60 * 24 * 7, // cached for seconds
+        must_revalidate: false,
+    }
+}
+#[get("/album/<album_name>")]
+fn get_album(album_name: String, serv: &State<MainService>) -> Option<Json<&Album>> {
+    if let Some(album) = serv.albums.get(&album_name) {
+        return Some(Json(album));
+    }
+    None
+}
 
 #[launch]
 fn rocket() -> _ {
     util::logger_init();
+    fs::create_dir_all("cache/exif").unwrap();
+    fs::create_dir_all("cache/video").unwrap();
     fs::create_dir_all("cache").expect("创建缓存目录失败");
     let drive_dirs = util::load_drive_dirs().unwrap();
     let config = rocket::Config::figment()
         .merge(("port", 7789))
-        .merge(("address", "[::0]"));
+        .merge(("address", "::0"));
     let cors = CorsOptions::default()
         .allowed_origins(AllowedOrigins::all())
         .allowed_methods(
@@ -53,46 +88,31 @@ fn rocket() -> _ {
         .allow_credentials(true);
     let mut serv = MainService::new(&drive_dirs);
     let serv_copy = serv.clone();
-    info!("读取exif信息");
-    for (album_name, album) in &mut serv.albums {
+
+    use rayon::prelude::*;
+
+    serv_copy.albums.par_iter().for_each(|(album_name, album)| {
         println!("Album: {}", album_name);
-        for (media_name, media_item) in &mut album.medias {
-            if is_image(&media_item.path) {
-                media_item.create_exif_cache();
-                media_item.read_exif_cache();
-            } else if is_video(&media_item.path) {
-                media_item.create_video_duration_cache();
-                media_item.read_video_duration_cache();
-            }
-        }
-    }
-    tokio::spawn(async move {
-        for (album_name, album) in serv_copy.albums {
-            println!("Album: {}", album_name);
-            for (media_name, media_item) in album.medias {
-                tokio::spawn(async move {
-                    media_item.create_preview(true);
-                    media_item.create_preview(false);
-                });
-            }
-        }
+        album
+            .medias
+            .par_iter()
+            .for_each(|(media_name, media_item)| {
+                if let Err(e) = media_item.create_preview(true) {
+                    info!("创建小图错误：{:?}", e);
+                    if let Err(e) = media_item.create_preview(false) {
+                        info!("创建大图错误：{:?}", e);
+                    }
+                }
+            });
     });
 
     let mut server = rocket::custom(config)
         .manage(serv)
-        .mount("/", routes![get_album])
+        .mount("/", routes![get_media, get_albums, get_album])
         .mount("/cache", FileServer::from(relative!("cache")))
-        .attach(cors.to_cors().unwrap());
-    for (index, dir) in drive_dirs.iter().enumerate() {
-        //let path = format!("/files/{}", index);
-        info!("挂载点：{:?}", dir);
-        server = server.mount("/", FileServer::from(dir));
-    }
-    if cfg!(debug_assertions) {
-        server
-    } else {
-        server.attach(Compression::fairing())
-    }
+        .attach(cors.to_cors().unwrap())
+        .attach(Compression::fairing());
+    server
 }
 
 /* #[tokio::main]
@@ -137,14 +157,6 @@ async fn main() {
 }
  */
 //获取影集
-use rocket::serde::json::Json;
-#[get("/<album_name>", format = "json")]
-async fn get_album(album_name: String, serv: &State<MainService>) -> Option<Json<&Album>> {
-    if let Some(album) = serv.albums.get(&album_name) {
-        return Some(Json(album));
-    }
-    None
-}
 
 //请求缩略图，返回第一张的名字
 /* if params.contains_key("tbnl") {
