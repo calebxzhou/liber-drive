@@ -61,6 +61,9 @@ export function readableDateTime(input: string): string {
   });
   return `${dateString} ${timeString}`;
 }
+export function deg2rad(deg: number): number {
+  return deg * (Math.PI / 180);
+}
 export function readableDate(input: string): string {
   const inputDate = new Date(input);
   const now = new Date();

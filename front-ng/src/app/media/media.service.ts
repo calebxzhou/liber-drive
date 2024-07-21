@@ -16,7 +16,7 @@ export class MediaService {
     return this.http.get<Album>(`${this.getUrl()}/${albumName}`);
   }
   getUrl(): string {
-    return `http://${this.page.getHostName()}:7789`;
+    return `https://${this.page.getHostName()}:7789`;
   }
   fetchBlob(url: string): Observable<HttpEvent<Blob>> {
     return this.http.get(url, {

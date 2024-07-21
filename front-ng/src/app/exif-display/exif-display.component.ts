@@ -20,7 +20,7 @@ import { ImageExif } from "../media/media";
 export class ExifDisplayComponent implements AfterViewChecked {
   @Input() exif!: ImageExif | undefined;
   ngAfterViewChecked(): void {
-    console.log(this.exif);
+    //console.log(this.exif);
   }
   focalLen(): string {
     let exif = this.exif;

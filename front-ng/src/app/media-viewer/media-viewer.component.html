@@ -1,3 +1,4 @@
+<!-- -->
 <div class="fixed top-0 left-0 w-full h-full bg-black z-20">
   <!-- 关闭按钮 -->
 
@@ -6,14 +7,20 @@
     <button class="text-2xl" (click)="close()">◀️</button>
     <div>
       <!--日期第一行 时间第二行-->
-      <span class="text-2xs block leading-none text-white">{{
-        title.split(" ")[0]
+      <span class="text-xs block leading-none text-white">{{
+        title.split(" ")[0].replaceAll("月", ".").replaceAll("日", "")
       }}</span>
       <span class="leading-none text-white">{{ title.split(" ")[1] }}</span>
     </div>
     <lg-exif-display [exif]="exif" class="ml-2"></lg-exif-display>
     <!-- 文件名 尺寸 -->
   </div>
+  <div
+    id="tmap"
+    #tmap
+    style="top: 10%; left: 10%"
+    class="fixed w-4/5 h-2/3 z-30"
+  ></div>
   <swiper-container init="false">
     <!-- Slides *ngIf="isImage(media)" -->
     <swiper-slide *ngFor="let media of medias">
@@ -48,16 +55,7 @@
         >
           💾原图{{ fullImageSize }}
         </button>
-        <!-- <button
-          class="m-1"
-          fileSaver
-          *ngIf="isVideo(media) && !isVideoLoaded"
-          [method]="'GET'"
-          [fileName]="media.name"
-          [url]="mediaUrl(media, true)"
-        >
-          💾下载{{ fullImageSize }}
-        </button> -->
+
         <button
           class="m-1"
           *ngIf="isVideo(media) && !playingVideo"
@@ -65,23 +63,20 @@
         >
           ⏯️播放&emsp;每秒{{ bitrate }}流量
         </button>
-        <!-- <button
-          class="m-1"
-          *ngIf="isVideo(media) && isVideoLoaded && !mediaRecorder"
-          (click)="startRecording()"
-        >
-          ⏺️原画录屏
-        </button>
-        <button
-          class="m-1"
-          *ngIf="isVideo(media) && isVideoLoaded && mediaRecorder"
-          (click)="stopRecording()"
-        >
-          ⏹️停止录屏
-        </button> -->
+
         <button class="m-1" *ngIf="scaleRatio > 1" (click)="scaleOut()">
           🔎缩小
         </button>
+      </div>
+      <div
+        class="absolute left-1/2 bottom-8 transform -translate-x-1/2 mb-2 text-center text-white bg-opacity-70 bg-black cursor-pointer"
+        *ngIf="distance"
+        (click)="toggleMap()"
+      >
+        <span
+          >🌏{{ distance }}km {{ locaStr ?? ".." }}
+          {{ displayMap ? "【❌关闭地图】" : "" }}</span
+        >
       </div>
     </swiper-slide>
   </swiper-container>

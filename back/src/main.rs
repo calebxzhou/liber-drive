@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::path::PathBuf;
 use std::{env, fs};
 
 use album::Album;
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
 use axum::http::header::CONTENT_TYPE;
+use axum_server::tls_rustls::RustlsConfig;
 use log::info;
 
 use axum::http::Extensions;
@@ -20,7 +22,7 @@ use axum::Router;
 use axum::{response::IntoResponse, routing::get};
 use media_sender::{handle_file, handle_preview};
 use tower_http::compression::CompressionLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::main_service::MainService;
 pub mod album;
@@ -138,18 +140,21 @@ async fn main() {
             CorsLayer::new()
                 .allow_origin("*".parse::<HeaderValue>().unwrap())
                 .allow_methods(tower_http::cors::Any)
-                .allow_headers(vec![CONTENT_TYPE]),
+                .allow_headers(Any),
         );
-    let listener_v6 =
-        tokio::net::TcpListener::bind(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789))
-            .await
-            .unwrap();
-    let listener_v4 =
-        tokio::net::TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 7789))
-            .await
-            .unwrap();
 
+    let config = RustlsConfig::from_pem_file(
+        PathBuf::from("C:\\Users\\calebxzhou\\Documents\\coding\\test.crt"),
+        PathBuf::from("C:\\Users\\calebxzhou\\Documents\\coding\\test.key"),
+    )
+    .await
+    .unwrap();
     info!("ready");
-    let serv6 = axum::serve(listener_v6, app.clone());
-    let serv4 = axum::serve(listener_v4, app.clone()).await;
+    axum_server::bind_rustls(
+        SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789),
+        config.clone(),
+    )
+    .serve(app.clone().into_make_service())
+    .await
+    .unwrap();
 }
