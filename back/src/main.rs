@@ -143,7 +143,7 @@ async fn main() {
                 .allow_headers(Any),
         );
 
-    let config = RustlsConfig::from_pem_file(PathBuf::from("1.crt"), PathBuf::from("1.key"))
+    let config = RustlsConfig::from_pem_file(PathBuf::from("../1.crt"), PathBuf::from("../1.key"))
         .await
         .unwrap();
     info!("ready");
