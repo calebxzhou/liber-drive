@@ -1,16 +1,7 @@
 import { Component, OnInit, Input, OnDestroy } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { HttpEvent, HttpEventType } from "@angular/common/http";
-import { Subscription } from "rxjs";
 import { MediaService } from "../media/media.service";
-import {
-  trigger,
-  state,
-  style,
-  animate,
-  transition,
-} from "@angular/animations";
 import { Media } from "../media/media";
 import { LazyLoadImageModule } from "ng-lazyload-image";
 import { LOADING_GIF } from "../const";
@@ -37,12 +28,7 @@ export class ImageTbnlComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     //获取缩略图
-    this.imageUrl = this.ms.fetchMediaUrl(
-      this.galleryName,
-      this.albumName,
-      this.media.name,
-      1
-    );
+    this.imageUrl = this.ms.fetchMediaUrl(this.albumName, this.media.name, 1);
     this.isVideo = this.ms.isVideo(this.media);
     setTimeout(() => {
       this.state = "normal";

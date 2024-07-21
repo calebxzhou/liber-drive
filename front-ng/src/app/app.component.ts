@@ -12,7 +12,6 @@ import {
   RouterOutlet,
 } from "@angular/router";
 import { NavbarComponent } from "./navbar/navbar.component";
-import { GalleryComponent } from "./gallery/gallery.component";
 import { SwiperOptions } from "swiper/types/swiper-options";
 @Component({
   selector: "app-root",
@@ -24,7 +23,6 @@ import { SwiperOptions } from "swiper/types/swiper-options";
     RouterLink,
     RouterLinkActive,
     NavbarComponent,
-    GalleryComponent,
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })

@@ -1,30 +1,19 @@
-import { HttpClient, HttpEvent, HttpEventType } from "@angular/common/http";
-import { Injectable, OnInit } from "@angular/core";
-import { BehaviorSubject, Observable, filter, switchMap, tap } from "rxjs";
+import { HttpClient, HttpEvent } from "@angular/common/http";
+import { Injectable } from "@angular/core";
+import { Observable, switchMap } from "rxjs";
 import { PageService } from "../page.service";
-import {
-  GalleryInfo,
-  Album,
-  Media,
-  AlbumInfo,
-  DefaultGallery,
-  DefaultAlbum,
-  ImageExif,
-} from "./media";
+import { Album, Media, ImageExif } from "./media";
 
 @Injectable({
   providedIn: "root",
 })
 export class MediaService {
   constructor(private http: HttpClient, private page: PageService) {}
-
-  fetchGallery(name: string): Observable<GalleryInfo> {
-    return this.http.get<GalleryInfo>(`${this.getUrl()}/gallery/${name}`);
+  fetchAlbumList() {
+    return this.http.get<Record<string, Album>>(`${this.getUrl()}/`);
   }
-  fetchAlbum(galleryName: string, albumName: string) {
-    return this.http.get<Album>(
-      `${this.getUrl()}/gallery/${galleryName}/${albumName}`
-    );
+  fetchAlbum(albumName: string) {
+    return this.http.get<Album>(`${this.getUrl()}/${albumName}`);
   }
   getUrl(): string {
     return `http://${this.page.getHostName()}:7789`;
@@ -36,48 +25,38 @@ export class MediaService {
       observe: "events",
     });
   }
-  fetchMediaUrl(
-    galleryName: string,
-    albumName: string,
-    mediaName: string,
-    tbnl: number
-  ) {
-    return `${this.getUrl()}/gallery/${galleryName}/${albumName}/${mediaName}${
+  fetchMediaUrl(albumName: string, mediaName: string, tbnl: number) {
+    return `${this.getUrl()}/${albumName}/${mediaName}${
       tbnl > -1 ? `?tbnl=${tbnl}` : ""
     }`;
   }
-  fetchImageExif(
-    galleryName: string,
-    albumName: string,
-    mediaName: string
-  ): Observable<ImageExif> {
+  fetchImageExif(albumName: string, mediaName: string): Observable<ImageExif> {
     return this.http.get<ImageExif>(
-      `${this.getUrl()}/gallery/${galleryName}/${albumName}/${mediaName}?exif=1`
+      `${this.getUrl()}/${albumName}/${mediaName}?exif=1`
     );
   }
   //tbnl：预览 -1原图 0大图 1小图
   fetchMedia(
-    galleryName: string,
     albumName: string,
     mediaName: string,
     tbnl: number
   ): Observable<HttpEvent<Blob>> {
-    return this.fetchBlob(
-      this.fetchMediaUrl(galleryName, albumName, mediaName, tbnl)
-    );
+    return this.fetchBlob(this.fetchMediaUrl(albumName, mediaName, tbnl));
   }
-  getAlbumTbnl(
-    galleryName: string,
-    albumName: string
-  ): Observable<HttpEvent<Blob>> {
+  getAlbumTbnlUrl(album: Album): string {
+    return `${this.getUrl()}/${album.name}/${
+      Object.values(album.medias)[0].name
+    }?tbnl=1`;
+  }
+  getAlbumTbnl(albumName: string): Observable<HttpEvent<Blob>> {
     return this.http
-      .get(`${this.getUrl()}/gallery/${galleryName}/${albumName}?tbnl=1`, {
+      .get(`${this.getUrl()}/${albumName}?tbnl=1`, {
         responseType: "text",
       })
       .pipe(
         switchMap((tbnlName) => {
           // Assuming tbnlName is the name of the media file you want to fetch
-          return this.fetchMedia(galleryName, albumName, tbnlName, 1);
+          return this.fetchMedia(albumName, tbnlName, 1);
         })
       );
   }
@@ -90,7 +69,6 @@ export class MediaService {
   isImage(media: Media) {
     return (
       media.name.toLocaleLowerCase().endsWith(".jpg") ||
-      media.name.toLocaleLowerCase().endsWith(".png") ||
       media.name.toLocaleLowerCase().endsWith(".heic")
     );
   }

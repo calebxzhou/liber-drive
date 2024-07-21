@@ -51,8 +51,9 @@
 <lg-media-viewer
   *ngIf="isDisplayViewer"
   [(isDisplayViewer)]="isDisplayViewer"
+  (onClose)="onCloseViewer()"
+  [date]="dateViewingNow"
   [medias]="mediasBeingViewed"
   [index]="viewerIndex"
-  [galleryName]="galleryName"
   [albumName]="albumName"
 ></lg-media-viewer>

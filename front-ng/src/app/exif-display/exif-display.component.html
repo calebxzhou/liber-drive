@@ -1,0 +1,24 @@
+<div
+  class="text-2xs leading-none text-white flex flex-wrap items-center"
+  *ngIf="exif"
+>
+  <img src="assets/icon/camera.svg" class="w-4" />
+  <span>{{ exif.make }}</span>
+  <img src="assets/icon/lens.svg" class="w-4" />
+  <span>{{ exif.lens }}</span>
+  <img src="assets/icon/aperture.svg" class="w-4" />
+  <span>F{{ exif.av }}</span>
+  <img src="assets/icon/shutter.svg" class="w-4" />
+  <span>{{ exif.tv }}</span>
+  <img src="assets/icon/iso.svg" class="w-4" />
+  <span>{{ exif.iso }}</span>
+  <img src="assets/icon/focal_len.svg" class="w-4" />
+  <span>{{ focalLen() }}mm</span>
+  @if(exif.exp_cp !== '0'){
+  <img src="assets/icon/exp_cp.svg" class="w-4" />
+  <span>{{ exif.exp_cp }}</span>
+  } @if(exif.flash.startsWith("fired")){
+  <img src="assets/icon/flash.svg" class="w-4" />
+  <span>闪</span>
+  }
+</div>

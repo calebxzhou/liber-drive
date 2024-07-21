@@ -1,23 +1,21 @@
-use std::collections::HashMap;
 use std::ffi::OsStr;
 
-use std::io::{Cursor, Read};
+use std::fs::File;
+use std::io::{BufReader, Cursor, Read};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::{fmt, fs, path::PathBuf, time::UNIX_EPOCH};
+use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 
 use image::imageops::FilterType;
-use image::{error, DynamicImage, ImageBuffer};
+use image::io::Reader;
+use image::{DynamicImage, ImageBuffer};
 use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
-use log::info;
-use mp4::Mp4Reader;
-use serde::{Serialize, Serializer};
+use log::{debug, info};
+use serde::Serialize;
 use webp::WebPMemory;
 
-use crate::image_exif::{self, ImageExif};
-use crate::util::{
-    date_str_to_timestamp, filename_to_timestamp, human_readable_size, AnyError, ResultAnyErr,
-};
+use crate::image_exif::ImageExif;
+use crate::util::{date_str_to_timestamp, filename_to_timestamp, AnyError, ResultAnyErr};
 
 //图片/视频
 #[serde_with::skip_serializing_none]
@@ -84,7 +82,7 @@ impl MediaItem {
             return Ok(());
         }
         let path = &self.path;
-        info!("正在创建缩略图{:?}", path);
+        info!("正在创建缩略图 {:?}", self.name);
 
         let image = if is_video(path) {
             //是视频 截取第一帧
@@ -96,15 +94,24 @@ impl MediaItem {
             )?
         } else if is_image(path) {
             //是图片
-            image::open(path)?
+            let file = File::open(path)?;
+            let reader = BufReader::new(file); //::open(path)?
+            let mut img_reader = Reader::new(reader).with_guessed_format()?;
+            img_reader.no_limits();
+            img_reader.decode()?
         } else {
             return Err(format!("{:?}不是照片视频", path).into());
         };
+
         //缩略图
         let webp_mem = compress_image_webp(&image, thumbnail)?.to_vec();
         //保存 缓存
         fs::write(&self.get_preview_path(thumbnail), &webp_mem)?;
-        info!("已创建缩略图，大小{}", webp_mem.len());
+        info!(
+            "已创建{}图，大小{}",
+            if thumbnail { "小" } else { "大" },
+            webp_mem.len()
+        );
         Ok(())
     }
     //exif信息缓存路径
@@ -215,13 +222,23 @@ pub fn decode_heif_image(path: &str) -> ResultAnyErr<DynamicImage> {
 }
 //压缩图片为webp格式
 pub fn compress_image_webp(image: &DynamicImage, thumbnail: bool) -> ResultAnyErr<WebPMemory> {
-    let width = image.width();
+    let mut width = image.width();
+    let mut height = image.height();
     let webp_mem = if thumbnail {
+        let ratio = height / 256;
+        width = width / ratio;
         //缩略图
         let image = image.resize(width, 256, FilterType::Nearest);
         webp::Encoder::from_image(&image)?.encode(80f32)
     } else {
         //无高度（L0） 压原图
+        if width > 10240 {
+            width /= 4;
+        }
+        if height > 10240 {
+            height /= 4;
+        }
+        let image = image.resize(width, height, FilterType::Nearest);
         webp::Encoder::from_image(&image)?.encode(40f32)
     };
 

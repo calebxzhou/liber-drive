@@ -1,10 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
 
-export interface GalleryInfo {
-  name: string;
-  size: number;
-  albums: AlbumInfo[];
-}
 export interface Album {
   name: string;
   size: number;
@@ -12,8 +7,10 @@ export interface Album {
 }
 export interface AlbumInfo {
   name: string;
-  size: number;
+  size: string;
+  tbnl_url: string;
   media_amount: number;
+  latest_media_time: number;
 }
 export interface Media {
   name: string;
@@ -25,11 +22,6 @@ export interface Media {
 export function getMediaId(media: Media) {
   return `${media.time}_${media.size}`;
 }
-export const DefaultGallery: GalleryInfo = {
-  name: "相册载入中...",
-  size: 0,
-  albums: [],
-};
 export const DefaultAlbum: Album = {
   name: "影集载入中...",
   size: 0,
@@ -44,4 +36,13 @@ export interface ImageExif {
   tv: string; // 快门
   iso: string; // ISO
   shot_time: string; // 拍摄时间
+  meter_mode: string;
+  exp_cp: string;
+  flash: string;
+  loca: GPSLocation;
+}
+export interface GPSLocation {
+  alt: string;
+  lng: string;
+  lat: string;
 }

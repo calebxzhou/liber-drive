@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod test {
 
-    use std::fs::{self, File};
+    use std::fs::{self};
 
     use image::{DynamicImage, ImageBuffer};
-    use libheif_rs::{Channel, ColorSpace, HeifContext, ItemId, LibHeif, Result, RgbChroma};
+    use libheif_rs::{ColorSpace, HeifContext, ItemId, LibHeif, RgbChroma};
 
     use crate::{media_item::compress_image_webp, util::ResultAnyErr};
 

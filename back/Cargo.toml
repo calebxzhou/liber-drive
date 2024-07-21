@@ -35,11 +35,9 @@ serde_with = "3.7.0"
 mp4 = "0.14.0"
 libheif-sys = "2.1.1"
 libheif-rs = "1.0.2"
-rocket = { version = "0.5.1", features = ["json"] }
 serde_qs = "0.13.0"
-rocket_async_compression = "0.6.0"
-rocket_cors = "0.6.0"
-rocket-cache-response = "0.6.4"
+axum = "0.7.5"
+futures-util = "0.3.30"
 [build-dependencies]
 bindgen = "0.65.1"
 

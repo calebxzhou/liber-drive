@@ -4,7 +4,14 @@
   <!-- 顶部 -->
   <div class="flex z-20">
     <button class="text-2xl" (click)="close()">◀️</button>
-    <span class="text-2xs leading-none text-white">{{ title }}</span>
+    <div>
+      <!--日期第一行 时间第二行-->
+      <span class="text-2xs block leading-none text-white">{{
+        title.split(" ")[0]
+      }}</span>
+      <span class="leading-none text-white">{{ title.split(" ")[1] }}</span>
+    </div>
+    <lg-exif-display [exif]="exif" class="ml-2"></lg-exif-display>
     <!-- 文件名 尺寸 -->
   </div>
   <swiper-container init="false">

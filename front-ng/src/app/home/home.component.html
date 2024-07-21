@@ -1,19 +1,14 @@
-<div
-  class="absolute top-1/4 inset-x-0 mx-auto w-max justify-center items-center"
->
-  <div class="relative w-16 inset-x-0 mx-auto flex items-center justify-center">
-    <img class="w-16" src="assets/avatar.webp" />
-    <img class="w-7 absolute bottom-0 right-0" src="assets/camera.svg" />
+<mat-list>
+  @for (album of albumInfos; track album) {
+  <div style="float: left" class="hover:bg-gray-200 cursor-pointer">
+    <mat-list-item (click)="goAlbum(album.name)">
+      <img matListItemAvatar [src]="album.tbnl_url" alt="..." />
+      <h3 matListItemTitle>{{ album.name }}</h3>
+      <p matListItemLine>
+        <span>{{ album.media_amount }}图，</span>
+        <span>共{{ album.size }}</span>
+      </p>
+    </mat-list-item>
   </div>
-  <div class="mt-6 flex justify-center gap-4">
-    <button mat-raised-button color="accent" (click)="goGallery('situ')">
-      学校活动
-    </button>
-    <button mat-raised-button color="primary" (click)="goGallery('life')">
-      日常生活
-    </button>
-  </div>
-</div>
-<div class="absolute bottom-0 inset-x-0 mx-auto w-max text-2xl">
-  v2.9&emsp;2024.7.10
-</div>
+  }
+</mat-list>

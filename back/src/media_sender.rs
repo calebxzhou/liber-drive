@@ -1,4 +1,4 @@
-/* use axum::{
+use axum::{
     body::Body,
     http::{
         header::{
@@ -167,4 +167,3 @@ pub async fn handle_file(media: &MediaItem, headers: &HeaderMap) -> Response<Bod
         .unwrap()
     }
 }
- */

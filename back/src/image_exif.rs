@@ -68,7 +68,7 @@ impl ImageExif {
         let exif = exifreader.read_from_container(&mut bufreader)?;
 
         //相机厂商
-        let mut make = Self::trim_exif_field(&exif, Tag::Make);
+        let make = Self::trim_exif_field(&exif, Tag::Make);
         /* make = match make.to_lowercase().as_str() {
             "panasonic" => "松下",
             "canon" => "佳能",
@@ -89,11 +89,17 @@ impl ImageExif {
         //镜头
         let lens_make = Self::trim_exif_field(&exif, Tag::LensMake);
         let lens_model = Self::trim_exif_field(&exif, Tag::LensModel);
-        let lens = format!("{}-{}", lens_make, lens_model);
+        let mut lens = lens_model.clone();
+        if !lens_make.is_empty() {
+            lens = format!("{}-{}", lens_make, lens_model);
+        }
         //摄影时间
         let shot_time = Self::trim_exif_field(&exif, Tag::DateTimeOriginal);
         //焦距
-        let focal_len = Self::trim_exif_field(&exif, Tag::FocalLength);
+        let mut focal_len = Self::trim_exif_field(&exif, Tag::FocalLengthIn35mmFilm);
+        if focal_len.is_empty() {
+            focal_len = Self::trim_exif_field(&exif, Tag::FocalLength);
+        }
         //iso
         let iso = Self::trim_exif_field(&exif, Tag::PhotographicSensitivity);
         //测光模式

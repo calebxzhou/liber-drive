@@ -1,29 +1,28 @@
 use std::collections::HashMap;
-use std::convert::Infallible;
-use std::io::Write;
-use std::net::{IpAddr, Ipv6Addr, SocketAddr};
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
-use std::{fs, thread};
-
-#[macro_use]
-extern crate rocket;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::{env, fs};
 
 use album::Album;
-use log::{error, info};
-use main_service::AlbumList;
-use media_item::{is_image, is_video};
-use rocket::figment::value::magic::RelativePathBuf;
-use rocket::fs::{relative, FileServer, NamedFile};
-use rocket::http::Method;
-use rocket::State;
-use rocket_async_compression::Compression;
-use rocket_cache_response::CacheResponse;
-use rocket_cors::{AllowedOrigins, CorsOptions};
+use axum::body::Body;
+use axum::extract::{Path, Query, State};
+use axum::http::header::CONTENT_TYPE;
+use log::info;
+
+use axum::http::Extensions;
+use axum::http::HeaderMap;
+use axum::http::HeaderValue;
+
+use axum::http::Response;
+
+use axum::http::StatusCode;
+use axum::Json;
+use axum::Router;
+use axum::{response::IntoResponse, routing::get};
+use media_sender::{handle_file, handle_preview};
+use tower_http::compression::CompressionLayer;
 use tower_http::cors::CorsLayer;
 
 use crate::main_service::MainService;
-use tower_http::compression::CompressionLayer;
 pub mod album;
 pub mod image_exif;
 pub mod main_service;
@@ -31,66 +30,88 @@ mod media_item;
 pub mod media_sender;
 mod test;
 mod util;
-use rocket::serde::json::Json;
-use serde::Deserialize;
 
-#[get("/albums")]
-fn get_albums(serv: &State<MainService>) -> Json<&AlbumList> {
-    Json(&serv.albums)
+macro_rules! match_or_404 {
+    ($match:expr) => {
+        match $match {
+            Some(item) => item,
+            None => return StatusCode::NOT_FOUND.into_response(),
+        }
+    };
 }
-#[get("/media/<album_name>/<media_name>")]
+//获取影集
+async fn get_albums(
+    Query(params): Query<HashMap<String, String>>,
+    State(serv): State<&MainService>,
+) -> impl IntoResponse {
+    Json(&serv.albums).into_response()
+}
+async fn get_album(
+    Path(album_name): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+    State(serv): State<&MainService>,
+) -> impl IntoResponse {
+    let album = match_or_404!(serv.albums.get(&album_name));
+    //请求缩略图，返回第一张的名字
+    if params.contains_key("tbnl") {
+        if let Some(first) = album.medias.iter().next() {
+            return first.0.clone().into_response();
+        }
+    }
+    Json(album).into_response()
+}
 async fn get_media(
-    album_name: String,
-    media_name: String,
-    serv: &State<MainService>,
-) -> CacheResponse<Option<NamedFile>> {
-    CacheResponse::Public {
-        responder: if let Some(album) = serv.albums.get(&album_name) {
-            if let Some(media) = album.medias.get(&media_name) {
-                NamedFile::open(&media.path).await.ok()
-            } else {
-                None
-            }
-        } else {
-            None
-        },
+    headers: HeaderMap,
+    Path((album_name, media_name)): Path<(String, String)>,
+    Query(params): Query<HashMap<String, String>>,
+    State(serv): State<&MainService>,
+) -> Response<Body> {
+    let album = match_or_404!(serv.albums.get(&album_name));
+    let media = match_or_404!(album.medias.get(&media_name));
 
-        max_age: 60 * 60 * 24 * 7, // cached for seconds
-        must_revalidate: false,
+    //读取预览
+    if let Some(level) = params.get("tbnl") {
+        return handle_preview(media, if level == "1" { true } else { false }, &headers).await;
     }
-}
-#[get("/album/<album_name>")]
-fn get_album(album_name: String, serv: &State<MainService>) -> Option<Json<&Album>> {
-    if let Some(album) = serv.albums.get(&album_name) {
-        return Some(Json(album));
-    }
-    None
+
+    //读取视频时长
+
+    return handle_file(media, &headers).await;
 }
 
-#[launch]
-fn rocket() -> _ {
+#[tokio::main]
+async fn main() {
+    env::set_var("RUST_BACKTRACE", "1");
     util::logger_init();
     fs::create_dir_all("cache/exif").unwrap();
     fs::create_dir_all("cache/video").unwrap();
     fs::create_dir_all("cache").expect("创建缓存目录失败");
     let drive_dirs = util::load_drive_dirs().unwrap();
-    let config = rocket::Config::figment()
-        .merge(("port", 7789))
-        .merge(("address", "::0"));
-    let cors = CorsOptions::default()
-        .allowed_origins(AllowedOrigins::all())
-        .allowed_methods(
-            vec![Method::Get, Method::Post, Method::Patch]
-                .into_iter()
-                .map(From::from)
-                .collect(),
-        )
-        .allow_credentials(true);
-    let mut serv = MainService::new(&drive_dirs);
+    let compression_layer = CompressionLayer::new().br(true).compress_when(
+        |_status: axum::http::StatusCode,
+         _version: axum::http::Version,
+         headers: &HeaderMap,
+         _extensions: &Extensions| {
+            //只压缩json和普通文本
+            //不压别的
+            if let Some(content_type) = headers.get(CONTENT_TYPE) {
+                let content_type = content_type.to_str().unwrap_or_default();
+                if content_type == "application/json" {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        },
+    );
+
+    let serv = MainService::new(&drive_dirs);
     let serv_copy = serv.clone();
 
     use rayon::prelude::*;
-
+    //todo 多线程建立缩略图
     serv_copy.albums.par_iter().for_each(|(album_name, album)| {
         println!("Album: {}", album_name);
         album
@@ -99,68 +120,36 @@ fn rocket() -> _ {
             .for_each(|(media_name, media_item)| {
                 if let Err(e) = media_item.create_preview(true) {
                     info!("创建小图错误：{:?}", e);
-                    if let Err(e) = media_item.create_preview(false) {
-                        info!("创建大图错误：{:?}", e);
-                    }
+                }
+                if let Err(e) = media_item.create_preview(false) {
+                    info!("创建大图错误：{:?}", e);
                 }
             });
     });
+    let serv = Box::leak(Box::new(serv));
+    let app = Router::new()
+        //读取照片视频
+        .route("/:albumName/:mediaName", get(get_media).with_state(serv))
+        //读取影集
+        .route("/:albumName", get(get_album).with_state(serv))
+        .route("/", get(get_albums).with_state(serv))
+        .layer(compression_layer)
+        .layer(
+            CorsLayer::new()
+                .allow_origin("*".parse::<HeaderValue>().unwrap())
+                .allow_methods(tower_http::cors::Any)
+                .allow_headers(vec![CONTENT_TYPE]),
+        );
+    let listener_v6 =
+        tokio::net::TcpListener::bind(SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789))
+            .await
+            .unwrap();
+    let listener_v4 =
+        tokio::net::TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 7789))
+            .await
+            .unwrap();
 
-    let mut server = rocket::custom(config)
-        .manage(serv)
-        .mount("/", routes![get_media, get_albums, get_album])
-        .mount("/cache", FileServer::from(relative!("cache")))
-        .attach(cors.to_cors().unwrap())
-        .attach(Compression::fairing());
-    server
+    info!("ready");
+    let serv6 = axum::serve(listener_v6, app.clone());
+    let serv4 = axum::serve(listener_v4, app.clone()).await;
 }
-
-/* #[tokio::main]
-async fn main() {
-    //todo 多线程建立缩略图 读取exif和视频时长
-    let handle = tokio::spawn(async move {
-        info!("开始读取exif信息");
-        let serv = serv.clone();
-        let mut serv = serv.write().unwrap();
-        for (album_name, album) in &mut serv.albums {
-            println!("Album: {}", album_name);
-            for (media_name, media_item) in &mut album.medias {
-                if is_image(&media_item.path) {
-                    media_item.update_exif_info();
-                } else if is_video(&media_item.path) {
-                    media_item.update_video_duration();
-                }
-            }
-        }
-    });
-} */
-
-/* async fn get_media(
-    // headers: HeaderMap,
-    Path((album_name, media_name)): Path<(String, String)>,
-    Query(params): Query<HashMap<String, String>>,
-    State(serv): State<Arc<RwLock<MainService>>>,
-) -> Response<Body> {
-    let serv = serv.read().unwrap();
-    if let Some(album) = serv.albums.get(&album_name) {
-        if let Some(media) = album.medias.get(&media_name) {
-            //读取预览
-            if let Some(level) = params.get("tbnl") {
-                return handle_preview(media, if level == "1" { true } else { false }, &headers)
-                    .await;
-            }
-            return handle_file(media, &headers).await;
-        }
-        return StatusCode::NOT_FOUND.into_response();
-    }
-    StatusCode::NOT_FOUND.into_response()
-}
- */
-//获取影集
-
-//请求缩略图，返回第一张的名字
-/* if params.contains_key("tbnl") {
-    if let Some(first) = album.medias.iter().next() {
-        return Ok(first.0.clone().into_response());
-    }
-} */

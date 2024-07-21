@@ -18,17 +18,15 @@ import {
 import { provideAnimations } from "@angular/platform-browser/animations";
 import { HomeComponent } from "./app/home/home.component";
 import { AlbumComponent } from "./app/album/album.component";
-import { GalleryComponent } from "./app/gallery/gallery.component";
 import { register as registerSwiperElements } from "swiper/element/bundle";
 import { LAZYLOAD_IMAGE_HOOKS, ScrollHooks } from "ng-lazyload-image";
 export const routes: Routes = [
   { path: "home", component: HomeComponent },
   {
-    path: "gallery/:galleryName/:albumName/:mediaName",
+    path: ":albumName/:test",
     component: AlbumComponent,
   },
-  { path: "gallery/:galleryName/:albumName", component: AlbumComponent },
-  { path: "gallery/:galleryName", component: GalleryComponent },
+  { path: ":albumName", component: AlbumComponent },
   { path: "", redirectTo: "/home", pathMatch: "full" },
   { path: "**", redirectTo: "/home", pathMatch: "full" },
 ];

@@ -1,7 +1,6 @@
 use crate::album::Album;
-use crate::image_exif;
-use crate::util::{date_str_to_timestamp, filename_to_timestamp, ResultAnyErr};
-use log::{debug, info};
+use crate::util::ResultAnyErr;
+use log::info;
 use std::collections::HashMap;
 use std::fs::{self, DirEntry};
 use std::io::{stdout, Write};

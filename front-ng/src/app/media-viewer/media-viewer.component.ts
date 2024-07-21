@@ -15,7 +15,7 @@ import {
   ViewChild,
   ViewChildren,
 } from "@angular/core";
-import { Media, ImageExif, GalleryInfo } from "../media/media";
+import { Media, ImageExif } from "../media/media";
 import { MediaService } from "../media/media.service";
 import { readableDateTime, toReadableSize } from "../util";
 import { Location } from "@angular/common";
@@ -31,6 +31,7 @@ import { Swiper } from "swiper";
 import { FileSaverModule } from "ngx-filesaver";
 import { TextSwitcherComponent } from "../text-switcher/text-switcher.component";
 import { LazyLoadImageModule } from "ng-lazyload-image";
+import { ExifDisplayComponent } from "../exif-display/exif-display.component";
 @Component({
   selector: "lg-media-viewer",
   standalone: true,
@@ -39,6 +40,7 @@ import { LazyLoadImageModule } from "ng-lazyload-image";
     LazyLoadImageModule,
     FileSaverModule,
     TextSwitcherComponent,
+    ExifDisplayComponent,
   ],
   templateUrl: "./media-viewer.component.html",
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
@@ -48,9 +50,10 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   @Input() medias!: Media[];
   @Input() index: number = -1;
   @Input() isDisplayViewer!: boolean;
-  @Input() galleryName!: string;
+  @Input() date!: string;
   @Input() albumName!: string;
   @Output() isDisplayViewerChange = new EventEmitter<boolean>();
+  @Output() onClose = new EventEmitter();
   @ViewChildren("videoPlayer") videoPlayers: QueryList<ElementRef> =
     new QueryList();
   swiper!: Swiper;
@@ -69,6 +72,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   //当前图片缩放比例
   scaleRatio = 1;
   title = "载入中";
+  exif: ImageExif | undefined = undefined;
   LOADING_GIF = LOADING_GIF;
   constructor(
     private renderer: Renderer2,
@@ -81,6 +85,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   ) {
     //取消默认返回键逻辑
     history.pushState(null, "", window.location.href); // Prevent the default back action
+    // history.pushState(null, "", window.location.href); // Prevent the default back action
   }
   ngAfterViewInit() {
     let params = {
@@ -138,29 +143,19 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   scaleOut() {
     this.swiper.zoom.out();
   }
-  getTitles(media: Media) {
-    let titles = [media.name];
-    if (media.exif) {
-      titles = [];
-      let exif = media.exif;
-      titles.push(readableDateTime(exif.shot_time));
-      titles.push(`${exif.make}.${exif.lens}`);
-      titles.push(
-        ` ${exif.focal_len}mm F${exif.av} ${exif.tv}s ISO${exif.iso}`
-      );
-    }
-    return titles;
-  }
   //改变图片时
   onSwiperIndexChange(swiper: Swiper, medias: Media[]) {
     this.index = swiper.activeIndex;
     let media = medias[this.index];
-
-    this.fullImageSize = toReadableSize(media.size * 3);
+    //原图大小
+    this.fullImageSize = toReadableSize(media.size);
 
     this.isOriginalLoaded = false;
     this.playingVideo = null;
-    this.title = this.getTitles(media).join(".");
+    if (media.exif) {
+      this.title = readableDateTime(media.exif?.shot_time);
+      this.exif = media.exif;
+    }
     //暂停视频
     this.videoPlayers.forEach((player) => {
       const videoEl: HTMLVideoElement = player.nativeElement;
@@ -182,13 +177,18 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnDestroy() {
     this.renderer.removeStyle(document.body, "overflow");
   }
+  @HostListener("document:keydown.escape", ["$event"])
+  onKeydownHandler(event: KeyboardEvent) {
+    this.close();
+  }
+
   close() {
     this.isDisplayViewerChange.emit(false);
   }
   loadOriginal(media: Media) {
     let t1 = Date.now();
     this.mediaService
-      .fetchMedia(this.galleryName, this.albumName, media.name, -1)
+      .fetchMedia(this.albumName, media.name, -1)
       .subscribe((event: HttpEvent<any>) => {
         if (event.type === HttpEventType.DownloadProgress) {
           this.fullImageSize =
@@ -229,43 +229,9 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   }
   mediaUrl(media: Media, full: boolean) {
     return this.mediaService.fetchMediaUrl(
-      this.galleryName,
       this.albumName,
       media.name,
       full ? -1 : 0
     );
-  }
-  mediaRecorder: MediaRecorder | undefined;
-  private chunks: BlobPart[] = [];
-
-  startRecording() {
-    navigator.mediaDevices
-      .getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        this.mediaRecorder = new MediaRecorder(stream);
-        this.mediaRecorder.start();
-
-        this.mediaRecorder.ondataavailable = (e) => {
-          this.chunks.push(e.data);
-        };
-      });
-  }
-
-  stopRecording() {
-    if (this.mediaRecorder) {
-      this.mediaRecorder.stop();
-
-      this.mediaRecorder.onstop = () => {
-        const blob = new Blob(this.chunks, { type: "video/mp4" });
-        this.chunks = [];
-
-        const videoURL = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = videoURL;
-        link.download = "RecordedVideo.mp4";
-        link.click();
-      };
-      this.mediaRecorder = undefined;
-    }
   }
 }
