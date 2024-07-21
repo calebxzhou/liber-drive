@@ -1,3 +1,2 @@
-fn main() {
-    println!("cargo:rustc-link-lib=stdc++");
+fn main() { 
 }

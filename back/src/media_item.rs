@@ -9,7 +9,7 @@ use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 use image::imageops::FilterType;
 use image::io::Reader;
 use image::{DynamicImage, ImageBuffer};
-use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
+//use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
 use log::{debug, info};
 use serde::Serialize;
 use webp::WebPMemory;
@@ -87,12 +87,14 @@ impl MediaItem {
         let image = if is_video(path) {
             //是视频 截取第一帧
             get_video_first_frame(&path.display().to_string())?
-        } else if is_heif_image(path) {
+        }
+        /* else if is_heif_image(path) {
             decode_heif_image(
                 path.to_str()
                     .ok_or(format!("无法解码图片路径{:?}，包含无效字符", path))?,
             )?
-        } else if is_image(path) {
+        } */
+        else if is_image(path) {
             //是图片
             let file = File::open(path)?;
             let reader = BufReader::new(file); //::open(path)?
@@ -199,7 +201,7 @@ impl MediaItem {
     }
 }
 //解码heif图片为DynamicImage
-pub fn decode_heif_image(path: &str) -> ResultAnyErr<DynamicImage> {
+/* pub fn decode_heif_image(path: &str) -> ResultAnyErr<DynamicImage> {
     let lib_heif = LibHeif::new();
     let ctx = HeifContext::read_from_file(path)?;
     let handle = ctx.primary_image_handle()?;
@@ -219,7 +221,7 @@ pub fn decode_heif_image(path: &str) -> ResultAnyErr<DynamicImage> {
         }
     };
     Ok(img)
-}
+} */
 //压缩图片为webp格式
 pub fn compress_image_webp(image: &DynamicImage, thumbnail: bool) -> ResultAnyErr<WebPMemory> {
     let mut width = image.width();
@@ -261,7 +263,7 @@ pub fn is_video(path: &PathBuf) -> bool {
 }
 //是否图片
 pub fn is_image(path: &PathBuf) -> bool {
-    matches_extension(path, &["jpg"]) || is_heif_image(path)
+    matches_extension(path, &["jpg"]) // || is_heif_image(path)
 }
 pub fn is_heif_image(path: &PathBuf) -> bool {
     matches_extension(path, &["heif", "heic"])
