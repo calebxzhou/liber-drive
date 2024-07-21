@@ -32,4 +32,13 @@ export class ExifDisplayComponent implements AfterViewChecked {
     }
     return "";
   }
+  cameraMake(): string {
+    return (
+      this.exif?.make
+        .replaceAll("Canon", "佳能")
+        .replaceAll("NIKON", "尼康")
+        .replaceAll("SONY", "索尼")
+        .replaceAll("Panasonic", "松下") ?? ""
+    );
+  }
 }
