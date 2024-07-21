@@ -143,12 +143,9 @@ async fn main() {
                 .allow_headers(Any),
         );
 
-    let config = RustlsConfig::from_pem_file(
-        PathBuf::from("C:\\Users\\calebxzhou\\Documents\\coding\\test.crt"),
-        PathBuf::from("C:\\Users\\calebxzhou\\Documents\\coding\\test.key"),
-    )
-    .await
-    .unwrap();
+    let config = RustlsConfig::from_pem_file(PathBuf::from("1.crt"), PathBuf::from("1.key"))
+        .await
+        .unwrap();
     info!("ready");
     axum_server::bind_rustls(
         SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789),
