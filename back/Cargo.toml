@@ -6,7 +6,8 @@ license = "MIT"
 description = "web drive"
 readme = "README.md"
 repository = "https://github.com/calebxzhou/liber-drive"
-edition = "2021"
+edition = "2021" 
+build = "build.rs"
 
 [dependencies]
 chrono = "0.4"
