@@ -50,7 +50,7 @@ async fn get_albums(
     //每个album名称 和第一个照片
     let mut new_map: HashMap<String, MediaItem> = HashMap::new();
 
-    for (key, album) in serv.albums {
+    for (key, album) in &serv.albums {
         if let Some((_, first_media_item)) = album.medias.iter().next() {
             new_map.insert(album.name.clone(), first_media_item.clone());
         }
@@ -152,9 +152,10 @@ async fn main() {
                 .allow_headers(Any),
         );
 
-    let config = RustlsConfig::from_pem_file(PathBuf::from("../1.crt"), PathBuf::from("../1.key"))
-        .await
-        .unwrap();
+    let config =
+        RustlsConfig::from_pem_file(PathBuf::from("../../1.crt"), PathBuf::from("../../1.key"))
+            .await
+            .unwrap();
     info!("ready");
     axum_server::bind_rustls(
         SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789),
