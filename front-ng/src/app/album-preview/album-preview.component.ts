@@ -22,8 +22,6 @@ import { ActivatedRoute, Router } from "@angular/router";
 })
 export class AlbumPreviewComponent implements OnInit {
   @Input() info!: AlbumInfo;
-  size: string = "";
-  amount: number = 0;
   thumbnailUrl: string = "";
   constructor(
     private router: Router,
@@ -33,8 +31,6 @@ export class AlbumPreviewComponent implements OnInit {
 
   ngOnInit(): void {
     this.route.paramMap.subscribe((params) => {
-      this.size = ""; //toReadableSize(this.info.size);
-      this.amount = this.info.media_amount;
       this.ms.getAlbumTbnl(this.info.name).subscribe((e: HttpEvent<any>) => {
         if (e.type == HttpEventType.Response) {
           this.thumbnailUrl = URL.createObjectURL(e.body);

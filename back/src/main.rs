@@ -20,6 +20,7 @@ use axum::http::StatusCode;
 use axum::Json;
 use axum::Router;
 use axum::{response::IntoResponse, routing::get};
+use media_item::MediaItem;
 use media_sender::{handle_file, handle_preview};
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
@@ -46,7 +47,15 @@ async fn get_albums(
     Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
 ) -> impl IntoResponse {
-    Json(&serv.albums).into_response()
+    //每个album名称 和第一个照片
+    let mut new_map: HashMap<String, MediaItem> = HashMap::new();
+
+    for (key, album) in serv.albums {
+        if let Some((_, first_media_item)) = album.medias.iter().next() {
+            new_map.insert(album.name.clone(), first_media_item.clone());
+        }
+    }
+    Json(&new_map).into_response()
 }
 async fn get_album(
     Path(album_name): Path<String>,

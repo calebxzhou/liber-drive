@@ -10,7 +10,7 @@ import { Album, Media, ImageExif } from "./media";
 export class MediaService {
   constructor(private http: HttpClient, private page: PageService) {}
   fetchAlbumList() {
-    return this.http.get<Record<string, Album>>(`${this.getUrl()}/`);
+    return this.http.get<Record<string, Media>>(`${this.getUrl()}/`);
   }
   fetchAlbum(albumName: string) {
     return this.http.get<Album>(`${this.getUrl()}/${albumName}`);
@@ -43,10 +43,8 @@ export class MediaService {
   ): Observable<HttpEvent<Blob>> {
     return this.fetchBlob(this.fetchMediaUrl(albumName, mediaName, tbnl));
   }
-  getAlbumTbnlUrl(album: Album): string {
-    return `${this.getUrl()}/${album.name}/${
-      Object.values(album.medias)[0].name
-    }?tbnl=1`;
+  getAlbumTbnlUrl(albumName: string, firstMedia: Media): string {
+    return `${this.getUrl()}/${albumName}/${firstMedia.name}?tbnl=1`;
   }
   getAlbumTbnl(albumName: string): Observable<HttpEvent<Blob>> {
     return this.http

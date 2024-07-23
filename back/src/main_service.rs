@@ -81,6 +81,7 @@ impl MainService {
                     info!("读取video cache错误，{:?}", e);
                 };
             }
+            media.update_media_time();
             album_medias.insert(name.clone(), media);
         }
         Ok(Album::new(

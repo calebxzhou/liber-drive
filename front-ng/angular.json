@@ -90,8 +90,8 @@
           },
           "defaultConfiguration": "development",
           "options": {
-            "sslKey": "../../test.key",
-            "sslCert": "../../test.crt"
+            "sslKey": "../1.key",
+            "sslCert": "../1.crt"
           }
         },
         "extract-i18n": {

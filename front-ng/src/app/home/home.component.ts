@@ -7,8 +7,11 @@ import { MatButtonModule } from "@angular/material/button";
 import { MediaService } from "../media/media.service";
 import { MatGridListModule } from "@angular/material/grid-list";
 import { MatListModule } from "@angular/material/list";
-import { Album, AlbumInfo } from "../media/media";
+import { Album, AlbumInfo, Media } from "../media/media";
 import { toReadableSize } from "../util";
+import { Pipe, PipeTransform } from "@angular/core";
+import { AlbumGridComponent } from "../album-grid/album-grid.component";
+
 @Component({
   selector: "lg-home",
   standalone: true,
@@ -19,32 +22,24 @@ import { toReadableSize } from "../util";
     MatButtonModule,
     MatGridListModule,
     MatListModule,
+    AlbumGridComponent,
   ],
   templateUrl: "./home.component.html",
   styles: ``,
 })
 export class HomeComponent implements OnInit {
-  albumInfos: AlbumInfo[] = [];
+  albums: AlbumInfo[] = [];
   constructor(private router: Router, private ms: MediaService) {}
   ngOnInit(): void {
     //修改时间倒序
     this.ms.fetchAlbumList().subscribe((albums) => {
-      this.albumInfos = Object.values(albums)
-        .map((album) => {
-          const mediaAmount = Object.keys(album.medias).length;
-          const albumSize = Object.values(album.medias).reduce(
-            (total, media) => total + media.size,
-            0
-          );
-          const latestMediaTime = Math.max(
-            ...Object.values(album.medias).map((media) => media.time)
-          );
+      this.albums = Object.keys(albums)
+        .map((albumName) => {
+          let media = albums[albumName];
           return {
-            name: album.name,
-            size: toReadableSize(albumSize),
-            media_amount: mediaAmount,
-            tbnl_url: this.ms.getAlbumTbnlUrl(album),
-            latest_media_time: latestMediaTime,
+            name: albumName,
+            tbnl_url: this.ms.getAlbumTbnlUrl(albumName, media),
+            latest_media_time: media.time,
           };
         })
         .sort((a, b) => b.latest_media_time - a.latest_media_time);

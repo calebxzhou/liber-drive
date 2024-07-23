@@ -7,9 +7,7 @@ export interface Album {
 }
 export interface AlbumInfo {
   name: string;
-  size: string;
   tbnl_url: string;
-  media_amount: number;
   latest_media_time: number;
 }
 export interface Media {

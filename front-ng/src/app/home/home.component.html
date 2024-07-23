@@ -1,8 +1,13 @@
-<mat-list>
-  @for (album of albumInfos; track album) {
-  <div style="float: left" class="hover:bg-gray-200 cursor-pointer">
-    <mat-list-item (click)="goAlbum(album.name)">
-      <img matListItemAvatar [src]="album.tbnl_url" alt="..." />
+<lg-album-grid [albums]="albums"></lg-album-grid>
+
+<!-- <mat-list>
+  <div
+    style="float: left"
+    class="hover:bg-gray-200 cursor-pointer"
+    *ngFor="let album of albums "
+  >
+    <mat-list-item (click)="goAlbum(album.key)">
+      <img matListItemAvatar [src]="album.value." alt="..." />
       <h3 matListItemTitle>{{ album.name }}</h3>
       <p matListItemLine>
         <span>{{ album.media_amount }}图</span>
@@ -10,5 +15,9 @@
       </p>
     </mat-list-item>
   </div>
-  }
 </mat-list>
+<div>
+  <h2>{{ album.key }}</h2>
+  <p>Time: {{ album.value.time }}</p>
+  <p>Size: {{ album.value.size }}</p>
+ Render other properties of the album -->
