@@ -240,7 +240,7 @@ pub fn compress_image_webp(image: &DynamicImage, thumbnail: bool) -> ResultAnyEr
         if height > 10240 {
             height /= 4;
         }
-        let image = image.resize(width, height, FilterType::Nearest);
+        let image = image.resize(width/2, height/2, FilterType::Nearest);
         webp::Encoder::from_image(&image)?.encode(40f32)
     };
 
