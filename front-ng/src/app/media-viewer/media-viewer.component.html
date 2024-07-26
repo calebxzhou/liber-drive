@@ -13,7 +13,14 @@
       <span class="leading-none text-white">{{ title.split(" ")[1] }}</span>
     </div>
     <lg-exif-display [exif]="exif" class="ml-2"></lg-exif-display>
-    <!-- 文件名 尺寸 -->
+    <!-- 停止播放按钮 -->
+    <button
+      class="text-2xl text-white"
+      (click)="stopVideo()"
+      *ngIf="isVideo() && isPlayingVideo"
+    >
+      ⏹️停止视频
+    </button>
   </div>
   <button
     class="absolute top-10 text-white"
@@ -34,23 +41,26 @@
     style="top: 10%; left: 10%"
     class="fixed w-4/5 h-2/3 z-30"
   ></div>
+  <!-- 不停止视频不让换 -->
+  <!-- 前图片 -->
   <button
     class="absolute left-0 text-2xl bottom-1/2 w-10 bg-opacity-70 bg-black"
     (click)="changeMedia(-1)"
-    *ngIf="index > 0"
+    *ngIf="index > 0 && !isPlayingVideo"
   >
     <img src="assets/icon/left.svg" />
   </button>
+  <!-- 后图片 -->
   <button
     class="absolute right-0 text-2xl bottom-1/2 w-10 bg-opacity-70 bg-black"
     (click)="changeMedia(1)"
-    *ngIf="index < medias.length - 1"
+    *ngIf="index < medias.length - 1 && !isPlayingVideo"
   >
     <img src="assets/icon/right.svg" />
   </button>
   <img
     [src]="mediaNow"
-    *ngIf="!playingVideo"
+    *ngIf="!isPlayingVideo"
     class="block mx-auto object-contain h-[95vh]"
     alt="图片载入中"
   />
@@ -59,7 +69,7 @@
     controls
     crossorigin
     playsinline
-    *ngIf="isVideo() && playingVideo"
+    *ngIf="isVideo() && isPlayingVideo"
     [src]="mediaUrl(medias[index], true)"
     class="block mx-auto object-contain h-[95vh]"
     loading="lazy"
@@ -68,9 +78,10 @@
   <img
     src="assets/icon/play.svg"
     class="absolute left-1/2 top-1/2 -translate-x-1/2 w-32 h-32 cursor-pointer"
-    *ngIf="isVideo() && !playingVideo"
+    *ngIf="isVideo() && !isPlayingVideo"
     (click)="playVideo()"
   />
+
   <div
     class="absolute left-1/2 bottom-8 transform -translate-x-1/2 mb-2 text-xs text-white bg-opacity-70 bg-black cursor-pointer flex"
     (click)="toggleMap()"

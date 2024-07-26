@@ -34,7 +34,6 @@ import {
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
-import { Swiper } from "swiper";
 import { FileSaverModule } from "ngx-filesaver";
 import { TextSwitcherComponent } from "../text-switcher/text-switcher.component";
 import { LazyLoadImageModule } from "ng-lazyload-image";
@@ -72,7 +71,6 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   @Output() onClose = new EventEmitter();
   @ViewChildren("videoPlayer") videoPlayers: QueryList<ElementRef> =
     new QueryList();
-  swiper!: Swiper;
   loadProgress: string | undefined;
   //尺寸（载入原图用）
   fullImageSize = "...";
@@ -88,7 +86,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   //是否原图
   isOriginalLoaded = false;
   //是否载入视频
-  playingVideo = false;
+  isPlayingVideo = false;
   //视频比特率（每秒消耗流量）
   bitrate = "";
   //当前图片缩放比例
@@ -120,10 +118,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     this.tmap.nativeElement.style.display = "none";
   }
   playVideo() {
-    this.playingVideo = true;
-  }
-  scaleOut() {
-    this.swiper.zoom.out();
+    this.isPlayingVideo = true;
   }
   //改变图片时
   changeMedia(moveIndex: number) {
@@ -143,7 +138,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     //还原加载原图状态
     this.isOriginalLoaded = false;
     //还原播放视频状态
-    this.playingVideo = false;
+    this.isPlayingVideo = false;
     //载入图片
     this.fetch(media, false);
 
@@ -208,6 +203,9 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
         "每秒消耗流量 " +
         toReadableSize(media.size / media.duration).replaceAll(" ", "");
     }
+  }
+  stopVideo() {
+    this.isPlayingVideo = false;
   }
   ngOnInit(): void {
     //禁止滚动条
