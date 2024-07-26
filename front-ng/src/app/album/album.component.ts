@@ -77,6 +77,7 @@ export class AlbumComponent implements OnInit {
       this.albumName = params.get("albumName")!;
       let test = params.get("test");
       this.mediaService.fetchAlbum(this.albumName).subscribe((album) => {
+        if (!album) return;
         this.album = album;
         let medias = Object.values(this.album.medias);
         this.medias = medias;
@@ -87,6 +88,7 @@ export class AlbumComponent implements OnInit {
         this.visibleGroups[Object.keys(groups)[0]] = true;
         this.title = `${album.name}(${medias.length})`;
         if (test) {
+          //test路径=默认打开viewer 方便调试
           this.openViewer(Object.keys(groups)[0], 0);
         }
       });

@@ -1,19 +1,32 @@
-import { HttpClient, HttpEvent } from "@angular/common/http";
+import { HttpClient, HttpErrorResponse, HttpEvent } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Observable, switchMap } from "rxjs";
+import { catchError, Observable, of, switchMap } from "rxjs";
 import { PageService } from "../page.service";
 import { Album, Media, ImageExif } from "./media";
+import { Router } from "@angular/router";
 
 @Injectable({
   providedIn: "root",
 })
 export class MediaService {
-  constructor(private http: HttpClient, private page: PageService) {}
+  constructor(
+    private http: HttpClient,
+    private page: PageService,
+    private router: Router
+  ) {}
   fetchAlbumList() {
     return this.http.get<Record<string, Media>>(`${this.getUrl()}/`);
   }
   fetchAlbum(albumName: string) {
-    return this.http.get<Album>(`${this.getUrl()}/${albumName}`);
+    return this.http.get<Album>(`${this.getUrl()}/${albumName}`).pipe(
+      catchError((error: HttpErrorResponse) => {
+        if (error.status !== 200) {
+          alert(`相册${albumName}不存在`);
+          this.router.navigate(["/"]);
+        }
+        return of(null);
+      })
+    );
   }
   getUrl(): string {
     return `https://${this.page.getHostName()}:7789`;

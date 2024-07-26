@@ -3,22 +3,22 @@
   *ngIf="exif"
 >
   <img src="assets/icon/camera.svg" class="w-4" />
-  <span>{{ cameraMake() }}</span>
+  <div>{{ cameraMake() }}</div>
   <img src="assets/icon/lens.svg" class="w-4" />
-  <span>{{ exif.lens }}</span>
+  <div>{{ exif.lens }}</div>
   <img src="assets/icon/aperture.svg" class="w-4" />
-  <span>F{{ exif.av }}</span>
+  <div>F{{ exif.av }}</div>
   <img src="assets/icon/shutter.svg" class="w-4" />
-  <span>{{ exif.tv }}</span>
+  <div>{{ exif.tv }}</div>
   <img src="assets/icon/iso.svg" class="w-4" />
-  <span>{{ exif.iso }}</span>
+  <div>{{ exif.iso }}</div>
   <img src="assets/icon/focal_len.svg" class="w-4" />
-  <span>{{ focalLen() }}mm</span>
+  <div>{{ focalLen() }}mm</div>
   @if(exif.exp_cp !== '0'){
   <img src="assets/icon/exp_cp.svg" class="w-4" />
-  <span>{{ exif.exp_cp }}</span>
+  <div>{{ exif.exp_cp }}</div>
   } @if(exif.flash.startsWith("fired")){
   <img src="assets/icon/flash.svg" class="w-4" />
-  <span>闪</span>
+  <div>闪</div>
   }
 </div>

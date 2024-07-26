@@ -3,7 +3,7 @@ import { MediaService } from "../media/media.service";
 import { AlbumInfo } from "../media/media";
 import { CommonModule } from "@angular/common";
 import { MatGridList, MatGridTile } from "@angular/material/grid-list";
-import { toReadableSize } from "../util";
+import { toReadableSize, readableDate, timestampToIsoDate } from "../util";
 import {
   trigger,
   state,
@@ -40,5 +40,8 @@ export class AlbumPreviewComponent implements OnInit {
   }
   goAlbum() {
     this.router.navigate([`/${this.info.name}`]);
+  }
+  albumTime() {
+    return readableDate(timestampToIsoDate(this.info.latest_media_time));
   }
 }

@@ -1,7 +1,7 @@
 /**
  * 转换unix时间戳到人类可读时间
  */
-export function toReadableTime(timestamp: number): string {
+export function timestampToIsoDate(timestamp: number): string {
   const date = new Date(timestamp * 1000);
   const year = date.getFullYear();
   // JavaScript months are 0-indexed, so we add 1 to get the correct month number

@@ -15,14 +15,96 @@
     <lg-exif-display [exif]="exif" class="ml-2"></lg-exif-display>
     <!-- 文件名 尺寸 -->
   </div>
+  <button
+    class="absolute top-10 text-white"
+    (click)="toggleMap()"
+    *ngIf="displayMap"
+  >
+    【❌关闭地图】
+  </button>
+  <div
+    class="absolute left-1/2 top-1/2 text-2xl -translate-x-1/2 bg-white"
+    *ngIf="loadProgress"
+  >
+    载入中：{{ loadProgress }}
+  </div>
   <div
     id="tmap"
     #tmap
     style="top: 10%; left: 10%"
     class="fixed w-4/5 h-2/3 z-30"
   ></div>
-  <swiper-container init="false">
-    <!-- Slides *ngIf="isImage(media)" -->
+  <button
+    class="absolute left-0 text-2xl bottom-1/2 w-10 bg-opacity-70 bg-black"
+    (click)="changeMedia(-1)"
+    *ngIf="index > 0"
+  >
+    <img src="assets/icon/left.svg" />
+  </button>
+  <button
+    class="absolute right-0 text-2xl bottom-1/2 w-10 bg-opacity-70 bg-black"
+    (click)="changeMedia(1)"
+    *ngIf="index < medias.length - 1"
+  >
+    <img src="assets/icon/right.svg" />
+  </button>
+  <img
+    [src]="mediaNow"
+    *ngIf="!playingVideo"
+    class="block mx-auto object-contain h-[95vh]"
+    alt="图片载入中"
+  />
+  <video
+    #videoPlayer
+    controls
+    crossorigin
+    playsinline
+    *ngIf="isVideo() && playingVideo"
+    [src]="mediaUrl(medias[index], true)"
+    class="block mx-auto object-contain h-[95vh]"
+    loading="lazy"
+  ></video>
+  <!--播放视频按钮-->
+  <img
+    src="assets/icon/play.svg"
+    class="absolute left-1/2 top-1/2 -translate-x-1/2 w-32 h-32 cursor-pointer"
+    *ngIf="isVideo() && !playingVideo"
+    (click)="playVideo()"
+  />
+  <div
+    class="absolute left-1/2 bottom-8 transform -translate-x-1/2 mb-2 text-xs text-white bg-opacity-70 bg-black cursor-pointer flex"
+    (click)="toggleMap()"
+  >
+    <div *ngIf="distance">🌏{{ distance }}km</div>
+    <div *ngIf="locaStr" class="leading-none">
+      <div class="block text-3xs">
+        {{ locaStr.split("-")[0] }}
+      </div>
+      <div class="text-xs">
+        {{ locaStr.split("-")[1] }}
+      </div>
+    </div>
+  </div>
+  <div
+    class="absolute left-1/2 bottom-0 transform -translate-x-1/2 text-center text-white mb-1 bg-opacity-70 bg-black"
+  >
+    <button
+      class="m-1 flex leading-none"
+      *ngIf="isImage() && !isOriginalLoaded"
+      (click)="fetch(medias[index], true)"
+    >
+      💾原图
+      <div class="leading-none">
+        <div class="block text-2xs">
+          {{ fullImageSize.split(" ")[0] }}
+        </div>
+        <div class="text-3xs">
+          {{ fullImageSize.split(" ")[1] }}
+        </div>
+      </div>
+    </button>
+  </div>
+  <!-- <swiper-container init="false"> 
     <swiper-slide *ngFor="let media of medias">
       <div class="swiper-zoom-container">
         <img
@@ -68,18 +150,9 @@
           🔎缩小
         </button>
       </div>
-      <div
-        class="absolute left-1/2 bottom-8 transform -translate-x-1/2 mb-2 text-center text-white bg-opacity-70 bg-black cursor-pointer"
-        *ngIf="distance"
-        (click)="toggleMap()"
-      >
-        <span
-          >🌏{{ distance }}km {{ locaStr ?? ".." }}
-          {{ displayMap ? "【❌关闭地图】" : "" }}</span
-        >
-      </div>
+      
     </swiper-slide>
-  </swiper-container>
+  </swiper-container> -->
 
   <!-- <div class="absolute bottom-0 text-center text-white mb-1 w-full">
     <button *ngIf="this.index > 0" class="float-left" (click)="prev()">

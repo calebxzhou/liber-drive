@@ -73,7 +73,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChildren("videoPlayer") videoPlayers: QueryList<ElementRef> =
     new QueryList();
   swiper!: Swiper;
-  loadProgress = 0;
+  loadProgress: string | undefined;
   //尺寸（载入原图用）
   fullImageSize = "...";
   //地址
@@ -88,15 +88,15 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   //是否原图
   isOriginalLoaded = false;
   //是否载入视频
-  playingVideo: Media | null = null;
+  playingVideo = false;
   //视频比特率（每秒消耗流量）
   bitrate = "";
   //当前图片缩放比例
   scaleRatio = 1;
   displayMap = false;
-  title = "载入中";
+  title = "";
   exif: ImageExif | undefined = undefined;
-  LOADING_GIF = LOADING_GIF;
+  mediaNow: string | undefined;
 
   @ViewChild("tmap", { static: false }) tmap!: ElementRef;
 
@@ -116,71 +116,37 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     // history.pushState(null, "", window.location.href); // Prevent the default back action
   }
   ngAfterViewInit() {
-    let params = {
-      // Optional parameters
-      direction: "horizontal",
-      loop: false,
-      keyboard: {
-        enabled: true,
-        onlyInViewport: false,
-      },
-      // If we need pagination
-      pagination: {
-        el: ".swiper-pagination",
-      },
-      speed: 400,
-      spaceBetween: 0,
-      // Navigation arrows
-      navigation: {
-        nextEl: ".swiper-button-next",
-        prevEl: ".swiper-button-prev",
-      },
-      initialSlide: this.index,
-      // And if we need scrollbar
-      scrollbar: {
-        el: ".swiper-scrollbar",
-      },
-      autoHeight: true,
-      virtual: {
-        enabled: true,
-      },
-      zoom: {
-        maxRatio: 3,
-      },
-      on: {
-        zoomChange: (swiper: Swiper, scale: number) => {
-          //放得太大 不允许切图
-          swiper.allowTouchMove = scale < 2;
-          this.scaleRatio = scale;
-        },
-      },
-    };
-
-    let el = document.querySelector("swiper-container")!;
-    Object.assign(el, params);
-    el.initialize();
-    this.onSwiperIndexChange(el.swiper, this.medias);
-    this.swiper = el.swiper;
-    el.swiper.on("activeIndexChange", (s: Swiper) =>
-      this.onSwiperIndexChange(s, this.medias)
-    );
+    //关闭地图
     this.tmap.nativeElement.style.display = "none";
   }
-  playVideo(media: Media) {
-    this.playingVideo = media;
+  playVideo() {
+    this.playingVideo = true;
   }
   scaleOut() {
     this.swiper.zoom.out();
   }
   //改变图片时
-  onSwiperIndexChange(swiper: Swiper, medias: Media[]) {
-    this.index = swiper.activeIndex;
-    let media = medias[this.index];
+  changeMedia(moveIndex: number) {
+    let index = this.index + moveIndex;
+    if (index >= this.medias.length) {
+      alert("再往下就没有图片了");
+      return;
+    }
+
+    let media = this.medias[index];
+    if (!media) {
+      return;
+    }
+    this.index = index;
     //原图大小
     this.fullImageSize = toReadableSize(media.size);
-
+    //还原加载原图状态
     this.isOriginalLoaded = false;
-    this.playingVideo = null;
+    //还原播放视频状态
+    this.playingVideo = false;
+    //载入图片
+    this.fetch(media, false);
+
     if (media.exif) {
       this.title = readableDateTime(media.exif?.shot_time);
       this.exif = media.exif;
@@ -190,16 +156,28 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
       let lng = this.gpsl.parseDegMinSec(media.exif.loca.lng);
       if (!isNaN(lat) && !isNaN(lng)) {
         const clientGps = window.locationData;
-        let gcj02_latlng = mapTools.transformWGS2GCJ({ lat, lng });
-        if (gcj02_latlng) {
-          lat = gcj02_latlng.lat;
-          lng = gcj02_latlng.lng;
+        if (clientGps) {
+          let gcj02_latlng = mapTools.transformWGS2GCJ({ lat, lng });
+          if (gcj02_latlng) {
+            lat = gcj02_latlng.lat;
+            lng = gcj02_latlng.lng;
+          }
+          this.lat = lat;
+          this.lng = lng;
+          let distance = this.gpsl.calculateDistance(
+            lat,
+            lng,
+            clientGps.lat,
+            clientGps.lng
+          );
+          if (distance > 100) {
+            this.distance = Math.round(distance) + "";
+          } else if (distance > 10) {
+            this.distance = distance.toFixed(1);
+          } else {
+            this.distance = distance.toFixed(2);
+          }
         }
-        this.lat = lat;
-        this.lng = lng;
-        this.distance = this.gpsl
-          .calculateDistance(lat, lng, clientGps.lat, clientGps.lng)
-          .toFixed(2);
         this.http
           .jsonp<any>(
             `https://apis.map.qq.com/ws/geocoder/v1/?location=${lat},${lng}&key=${LBS_KEY}&get_poi=1&output=jsonp&poi_options=policy=5`,
@@ -211,6 +189,8 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
             let city = loca.result.ad_info.city.replaceAll("市", "");
             let dist = loca.result.ad_info.district;
             let detailed = loca.result.formatted_addresses.recommend;
+            //去除具体地址里的区
+            detailed = detailed.replaceAll(dist, "");
             this.locaStr = `${province}${city}${dist}-${detailed}`;
           });
       } else {
@@ -223,8 +203,10 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
       const videoEl: HTMLVideoElement = player.nativeElement;
       videoEl.pause();
     });
-    if (this.isVideo(media) && media.duration) {
-      this.bitrate = toReadableSize(media.size / media.duration);
+    if (this.isVideo() && media.duration) {
+      this.title =
+        "每秒消耗流量 " +
+        toReadableSize(media.size / media.duration).replaceAll(" ", "");
     }
   }
   ngOnInit(): void {
@@ -235,59 +217,70 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
     this.platformLocation.onPopState(() => {
       this.close();
     });
+    this.changeMedia(0);
   }
   ngOnDestroy() {
     this.renderer.removeStyle(document.body, "overflow");
   }
-  @HostListener("document:keydown.escape", ["$event"])
+  @HostListener("document:keydown", ["$event"])
   onKeydownHandler(event: KeyboardEvent) {
-    this.close();
+    switch (event.key) {
+      case "ArrowLeft":
+      case "a":
+      case "A":
+        this.changeMedia(-1);
+        break;
+      case "ArrowRight":
+      case "d":
+      case "D":
+        this.changeMedia(1);
+        break;
+      case "Escape":
+        this.close();
+        break;
+      default:
+        break;
+    }
   }
 
   close() {
     this.isDisplayViewerChange.emit(false);
   }
-  loadOriginal(media: Media) {
+  loadMedia() {
+    let url = this.mediaService.fetchMediaUrl;
+  }
+  fetch(media: Media, original: boolean) {
     let t1 = Date.now();
     this.mediaService
-      .fetchMedia(this.albumName, media.name, -1)
+      .fetchMedia(this.albumName, media.name, original ? -1 : 0)
       .subscribe((event: HttpEvent<any>) => {
         if (event.type === HttpEventType.DownloadProgress) {
-          this.fullImageSize =
+          this.loadProgress =
             Math.round((100 * event.loaded) / (event.total ?? 1)) + "%";
         } else if (event.type === HttpEventType.Response) {
           let t2 = Date.now();
           const blob: Blob = event.body;
-          let imageEl: HTMLImageElement = document.getElementById(
-            `img_${media.size}`
-          ) as HTMLImageElement;
           // Create a new FileReader instance
-          let reader = new FileReader();
-
-          // Define the onload event
-          reader.onloadend = function () {
-            // Once the read operation is finished, set the image source to the Base64 string
-            imageEl.src = reader.result as string;
-          };
-
-          // Start reading the blob as a data URL
-          reader.readAsDataURL(blob);
-          this.isOriginalLoaded = true;
-          this.snackBar.open(
-            `已载入原图(⏰${((t2 - t1) / 1000).toFixed(2)}s)`,
-            "x",
-            {
-              duration: 1000,
-            }
-          );
+          this.mediaNow = URL.createObjectURL(blob);
+          if (original) {
+            this.isOriginalLoaded = true;
+            this.snackBar.open(
+              `已载入原图(⏰${((t2 - t1) / 1000).toFixed(2)}s)`,
+              "x",
+              {
+                duration: 1000,
+              }
+            );
+          }
+          this.loadProgress = undefined;
         }
       });
   }
-  isImage(media: Media) {
-    return this.mediaService.isImage(media);
+  isImage() {
+    return this.mediaService.isImage(this.medias[this.index]);
   }
-  isVideo(media: Media) {
-    return this.mediaService.isVideo(media);
+  isVideo() {
+    return this.mediaService.isVideo(this.medias[this.index]);
   }
   mediaUrl(media: Media, full: boolean) {
     return this.mediaService.fetchMediaUrl(
