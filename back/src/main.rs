@@ -157,11 +157,24 @@ async fn main() {
             .await
             .unwrap();
     info!("ready");
-    axum_server::bind_rustls(
+
+    // Create the first server
+    let server_v4 = axum_server::bind_rustls(
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 7789),
+        config.clone(),
+    )
+    .serve(app.clone().into_make_service());
+
+    // Create the second server
+    let server_v6 = axum_server::bind_rustls(
         SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789),
         config.clone(),
     )
-    .serve(app.clone().into_make_service())
-    .await
-    .unwrap();
+    .serve(app.clone().into_make_service());
+
+    // Use tokio::try_join! to run both servers concurrently
+    match tokio::try_join!(server_v4, server_v6) {
+        Ok(_) => info!("Servers ran successfully"),
+        Err(e) => eprintln!("Server error: {}", e),
+    }
 }

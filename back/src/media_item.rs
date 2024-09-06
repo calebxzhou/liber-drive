@@ -1,14 +1,15 @@
 use std::ffi::OsStr;
 
+use avif_decode::Image;
+use image::imageops::FilterType;
+use image::io::Reader;
+use image::{DynamicImage, ImageBuffer, Rgb};
+use rgb::ComponentMap;
 use std::fs::File;
 use std::io::{BufReader, Cursor, Read};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
-
-use image::imageops::FilterType;
-use image::io::Reader;
-use image::{DynamicImage, ImageBuffer};
 //use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
 use log::{debug, info};
 use serde::Serialize;
@@ -87,20 +88,19 @@ impl MediaItem {
         let image = if is_video(path) {
             //是视频 截取第一帧
             get_video_first_frame(&path.display().to_string())?
-        }
-        /* else if is_heif_image(path) {
-            decode_heif_image(
-                path.to_str()
-                    .ok_or(format!("无法解码图片路径{:?}，包含无效字符", path))?,
-            )?
-        } */
-        else if is_image(path) {
+        } else if is_image(path) {
             //是图片
             let file = File::open(path)?;
             let reader = BufReader::new(file); //::open(path)?
-            let mut img_reader = Reader::new(reader).with_guessed_format()?;
-            img_reader.no_limits();
-            img_reader.decode()?
+            if is_jpg_image(path) {
+                let mut img_reader = Reader::new(reader).with_guessed_format()?;
+                img_reader.no_limits();
+                img_reader.decode()?
+            } else if is_avif_image(path) {
+                Self::decode_avif_image(path)?
+            } else {
+                return Err(format!("{:?} 格式不支持解码", path).into());
+            }
         } else {
             return Err(format!("{:?}不是照片视频", path).into());
         };
@@ -115,6 +115,48 @@ impl MediaItem {
             webp_mem.len()
         );
         Ok(())
+    }
+
+    pub fn decode_avif_image(path: &Path) -> ResultAnyErr<DynamicImage> {
+        let data = std::fs::read(path)
+            .map_err(|e| format!("Unable to read '{}', because: {}", path.display(), e))?;
+        let decoded = avif_decode::Decoder::from_avif(&data)?;
+        let png = match decoded.to_image()? {
+            Image::Rgb8(img) => {
+                let (buf, width, height) = img.into_contiguous_buf();
+                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::RGB, 8)
+            }
+            Image::Rgb16(img) => {
+                let (mut buf, width, height) = img.into_contiguous_buf();
+                for px in &mut buf {
+                    *px = px.map(|c| u16::from_ne_bytes(c.to_be_bytes()));
+                }
+                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::RGB, 16)
+            }
+            Image::Rgba8(img) => {
+                let (buf, width, height) = img.into_contiguous_buf();
+                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::RGBA, 8)
+            }
+            Image::Rgba16(img) => {
+                let (mut buf, width, height) = img.into_contiguous_buf();
+                for px in &mut buf {
+                    *px = px.map(|c| u16::from_ne_bytes(c.to_be_bytes()));
+                }
+                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::RGBA, 16)
+            }
+            Image::Gray8(img) => {
+                let (buf, width, height) = img.into_contiguous_buf();
+                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::GREY, 8)
+            }
+            Image::Gray16(img) => {
+                let (mut buf, width, height) = img.into_contiguous_buf();
+                for px in &mut buf {
+                    *px = px.map(|c| u16::from_ne_bytes(c.to_be_bytes()));
+                }
+                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::GREY, 16)
+            }
+        }?;
+        Ok(image::load(Cursor::new(png), image::ImageFormat::Png)?)
     }
     //exif信息缓存路径
     pub fn get_exif_cache_path(&self) -> PathBuf {
@@ -240,7 +282,7 @@ pub fn compress_image_webp(image: &DynamicImage, thumbnail: bool) -> ResultAnyEr
         if height > 10240 {
             height /= 4;
         }
-        let image = image.resize(width/2, height/2, FilterType::Nearest);
+        let image = image.resize(width / 2, height / 2, FilterType::Nearest);
         webp::Encoder::from_image(&image)?.encode(40f32)
     };
 
@@ -263,7 +305,13 @@ pub fn is_video(path: &PathBuf) -> bool {
 }
 //是否图片
 pub fn is_image(path: &PathBuf) -> bool {
-    matches_extension(path, &["jpg"]) // || is_heif_image(path)
+    is_jpg_image(path) || is_avif_image(path)
+}
+pub fn is_jpg_image(path: &PathBuf) -> bool {
+    matches_extension(path, &["jpg"])
+}
+pub fn is_avif_image(path: &PathBuf) -> bool {
+    matches_extension(path, &["avif"])
 }
 pub fn is_heif_image(path: &PathBuf) -> bool {
     matches_extension(path, &["heif", "heic"])

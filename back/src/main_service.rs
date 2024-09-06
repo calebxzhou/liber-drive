@@ -7,7 +7,7 @@ use std::io::{stdout, Write};
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
-use crate::media_item::{self, is_image, is_video, MediaItem};
+use crate::media_item::{self, is_jpg_image, is_video, MediaItem};
 pub type AlbumList = HashMap<String, Album>;
 #[derive(Clone)]
 pub struct MainService {
@@ -51,7 +51,7 @@ impl MainService {
             let media_entry = media_entry?;
             let path = media_entry.path().to_path_buf();
             //既不是图片也不是视频，跳过
-            if !(media_item::is_video(&path) || media_item::is_image(&path)) {
+            if !(media_item::is_video(&path) || media_item::is_jpg_image(&path)) {
                 continue;
             }
 
@@ -66,7 +66,7 @@ impl MainService {
             let time = media_item::get_file_created_time(&path)?;
 
             let mut media = MediaItem::new(path, name.clone(), time, size);
-            if is_image(&media.path) {
+            if is_jpg_image(&media.path) {
                 if let Err(e) = media.create_exif_cache() {
                     info!("创建exif错误，{:?}", e);
                 }

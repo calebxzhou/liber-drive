@@ -14,7 +14,7 @@ use tokio::{fs::File, io::AsyncSeekExt};
 use tokio_util::io::ReaderStream;
 
 use crate::{
-    media_item::{is_heif_image, is_image, is_video, MediaItem},
+    media_item::{is_heif_image, is_jpg_image, is_video, MediaItem},
     util::{convert_http_date_to_u64, convert_u64_to_http_date},
 };
 
@@ -108,7 +108,7 @@ pub async fn handle_file(media: &MediaItem, headers: &HeaderMap) -> Response<Bod
         CONTENT_TYPE,
         if is_heif_image(&media.path) {
             "image/heic"
-        } else if is_image(&media.path) {
+        } else if is_jpg_image(&media.path) {
             "image/jpeg"
         } else if is_video(&media.path) {
             "video/mp4"

@@ -258,8 +258,15 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
         } else if (event.type === HttpEventType.Response) {
           let t2 = Date.now();
           const blob: Blob = event.body;
+          const reader = new FileReader();
+          //图片src用base64 不然微信保存不了blob
+          reader.onloadend = () => {
+            this.mediaNow = reader.result as string;
+          };
+          reader.readAsDataURL(blob);
           // Create a new FileReader instance
-          this.mediaNow = URL.createObjectURL(blob);
+          //this.mediaNow = URL.createObjectURL(blob);
+
           if (original) {
             this.isOriginalLoaded = true;
             this.snackBar.open(

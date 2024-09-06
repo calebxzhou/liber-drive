@@ -24,3 +24,4 @@ back/target
 *.sln
 *.sw?
 back/drive_dir.txt
+.fake
