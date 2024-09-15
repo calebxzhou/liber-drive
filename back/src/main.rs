@@ -20,6 +20,7 @@ use axum::http::StatusCode;
 use axum::Json;
 use axum::Router;
 use axum::{response::IntoResponse, routing::get};
+use axum::routing::post;
 use media_item::MediaItem;
 use media_sender::{handle_file, handle_preview};
 use tower_http::compression::CompressionLayer;
@@ -42,7 +43,7 @@ macro_rules! match_or_404 {
         }
     };
 }
-//获取影集
+//获取全部影集 
 async fn get_albums(
     Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
@@ -53,12 +54,15 @@ async fn get_albums(
 
     for (key, album) in &serv.albums {
         if let Some((_, first_media_item)) = album.medias.iter().next() {
-            new_map.insert(album.name.clone(), first_media_item.clone());
+            //没有密码的才显示
+            if album.pwd == Option::None {
+                new_map.insert(album.name.clone(), first_media_item.clone());
+            }
         }
     }
     Json(&new_map).into_response()
-}
-async fn get_album(
+} 
+async fn post_album(
     Path(album_name): Path<String>,
     Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
@@ -70,15 +74,33 @@ async fn get_album(
             return first.0.clone().into_response();
         }
     }
+    //验证密码正确
+    if params.contains_key("has_pwd") {
+        if let Some(album_pwd) = &album.pwd {
+                return "true".into_response(); 
+        }
+        return "false".into_response();
+    }
+    //验证密码正确
+    if let Some(query_pwd) = params.get("chk_pwd") {
+        if let Some(album_pwd) = &album.pwd {
+            if query_pwd == album_pwd {
+                return "true".into_response();
+            }
+        }
+        return "false".into_response();
+    }
+    if album.pwd == Option::None {
+        return Json(album).into_response();
+    }
     if let Some(query_pwd) = params.get("pwd") {
         if let Some(album_pwd) = &album.pwd {
             if query_pwd == album_pwd {
-                return "1".into_response();
+                return Json(album).into_response();
             }
         }
-        return "0".into_response();
     }
-    Json(album).into_response()
+    return "false".into_response();
 }
 async fn get_media(
     headers: HeaderMap,
@@ -151,8 +173,8 @@ async fn main() {
 
         //读取照片视频
         .route("/:albumName/:mediaName", get(get_media).with_state(serv))
-        //读取影集
-        .route("/:albumName", get(get_album).with_state(serv))
+        //读取影集 
+        .route("/:albumName", post(post_album).with_state(serv))
         .route("/", get(get_albums).with_state(serv))
         .layer(compression_layer)
         .layer(
