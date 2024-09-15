@@ -10,10 +10,13 @@ use crate::media_item::MediaItem;
 pub struct Album {
     pub name: String,
     pub medias: HashMap<String, MediaItem>,
+    pub sub_albums: HashMap<String, Album>,
+    #[serde(skip_serializing)]
+    pub pwd: Option<String>,
 }
 impl Album {
-    pub fn new(name: String, medias: HashMap<String, MediaItem>) -> Self {
-        Self { name, medias }
+    pub fn new(name: String, medias: HashMap<String, MediaItem>, sub_albums: HashMap<String, Album>, pwd: Option<String>) -> Self {
+        Self { name, medias, sub_albums, pwd }
     }
 }
 impl fmt::Display for Album {

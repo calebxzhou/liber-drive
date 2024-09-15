@@ -47,6 +47,7 @@ async fn get_albums(
     Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
 ) -> impl IntoResponse {
+
     //每个album名称 和第一个照片
     let mut new_map: HashMap<String, MediaItem> = HashMap::new();
 
@@ -68,6 +69,14 @@ async fn get_album(
         if let Some(first) = album.medias.iter().next() {
             return first.0.clone().into_response();
         }
+    }
+    if let Some(query_pwd) = params.get("pwd") {
+        if let Some(album_pwd) = &album.pwd {
+            if query_pwd == album_pwd {
+                return "1".into_response();
+            }
+        }
+        return "0".into_response();
     }
     Json(album).into_response()
 }
@@ -139,6 +148,7 @@ async fn main() {
     });
     let serv = Box::leak(Box::new(serv));
     let app = Router::new()
+
         //读取照片视频
         .route("/:albumName/:mediaName", get(get_media).with_state(serv))
         //读取影集
@@ -163,14 +173,14 @@ async fn main() {
         SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 7789),
         config.clone(),
     )
-    .serve(app.clone().into_make_service());
+        .serve(app.clone().into_make_service());
 
     // Create the second server
     let server_v6 = axum_server::bind_rustls(
         SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 7789),
         config.clone(),
     )
-    .serve(app.clone().into_make_service());
+        .serve(app.clone().into_make_service());
 
     // Use tokio::try_join! to run both servers concurrently
     match tokio::try_join!(server_v4, server_v6) {

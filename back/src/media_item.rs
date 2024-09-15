@@ -1,6 +1,5 @@
 use std::ffi::OsStr;
-
-use avif_decode::Image;
+ 
 use image::imageops::FilterType;
 use image::io::Reader;
 use image::{DynamicImage, ImageBuffer, Rgb};
@@ -10,12 +9,16 @@ use std::io::{BufReader, Cursor, Read};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
+use aom_decode::avif::{Avif, Image};
+use aom_decode::Config;
+use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
 //use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
 use log::{debug, info};
 use serde::Serialize;
 use webp::WebPMemory;
 
 use crate::image_exif::ImageExif;
+use crate::media_item;
 use crate::util::{date_str_to_timestamp, filename_to_timestamp, AnyError, ResultAnyErr};
 
 //图片/视频
@@ -87,7 +90,7 @@ impl MediaItem {
 
         let image = if is_video(path) {
             //是视频 截取第一帧
-            get_video_first_frame(&path.display().to_string())?
+            get_video_first_frame( path.display().to_string())?
         } else if is_image(path) {
             //是图片
             let file = File::open(path)?;
@@ -96,8 +99,8 @@ impl MediaItem {
                 let mut img_reader = Reader::new(reader).with_guessed_format()?;
                 img_reader.no_limits();
                 img_reader.decode()?
-            } else if is_avif_image(path) {
-                Self::decode_avif_image(path)?
+            } else if is_heif_image(path) {
+                media_item::decode_heif_image(path.to_str().unwrap())?
             } else {
                 return Err(format!("{:?} 格式不支持解码", path).into());
             }
@@ -117,47 +120,7 @@ impl MediaItem {
         Ok(())
     }
 
-    pub fn decode_avif_image(path: &Path) -> ResultAnyErr<DynamicImage> {
-        let data = std::fs::read(path)
-            .map_err(|e| format!("Unable to read '{}', because: {}", path.display(), e))?;
-        let decoded = avif_decode::Decoder::from_avif(&data)?;
-        let png = match decoded.to_image()? {
-            Image::Rgb8(img) => {
-                let (buf, width, height) = img.into_contiguous_buf();
-                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::RGB, 8)
-            }
-            Image::Rgb16(img) => {
-                let (mut buf, width, height) = img.into_contiguous_buf();
-                for px in &mut buf {
-                    *px = px.map(|c| u16::from_ne_bytes(c.to_be_bytes()));
-                }
-                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::RGB, 16)
-            }
-            Image::Rgba8(img) => {
-                let (buf, width, height) = img.into_contiguous_buf();
-                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::RGBA, 8)
-            }
-            Image::Rgba16(img) => {
-                let (mut buf, width, height) = img.into_contiguous_buf();
-                for px in &mut buf {
-                    *px = px.map(|c| u16::from_ne_bytes(c.to_be_bytes()));
-                }
-                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::RGBA, 16)
-            }
-            Image::Gray8(img) => {
-                let (buf, width, height) = img.into_contiguous_buf();
-                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::GREY, 8)
-            }
-            Image::Gray16(img) => {
-                let (mut buf, width, height) = img.into_contiguous_buf();
-                for px in &mut buf {
-                    *px = px.map(|c| u16::from_ne_bytes(c.to_be_bytes()));
-                }
-                lodepng::encode_memory(&buf, width, height, lodepng::ColorType::GREY, 16)
-            }
-        }?;
-        Ok(image::load(Cursor::new(png), image::ImageFormat::Png)?)
-    }
+   
     //exif信息缓存路径
     pub fn get_exif_cache_path(&self) -> PathBuf {
         Path::new("cache").join("exif").join(format!(
@@ -242,14 +205,58 @@ impl MediaItem {
         self.time = time;
     }
 }
+pub fn decode_avif_image(path: &Path) -> ResultAnyErr<()> {
+    let file = std::fs::read(path)?;
+    let out_path = Path::new( "example.png");
+    let mut d = Avif::decode(&file, &Config {
+        threads: num_cpus::get(),
+    })?;
+    print!("111");
+    match d.convert()? {
+        Image::RGB8(img) => {
+            let (out, width, height) = img.into_contiguous_buf();
+            lodepng::encode24_file(&out_path, &out, width, height)
+        },
+        Image::RGBA8(img) => {
+            let (out, width, height) = img.into_contiguous_buf();
+            lodepng::encode32_file(&out_path, &out, width, height)
+        },
+        Image::Gray8(img) => {
+            let (out, width, height) = img.into_contiguous_buf();
+            lodepng::encode_file(&out_path, &out, width, height, lodepng::ColorType::GREY, 8)
+        },
+        // 16-bit PNG are huuuge, so save as 8-bit anyway.
+        Image::RGB16(img) => {
+            let mut out = Vec::new();
+            for px in img.pixels() {
+                out.push(px.map(|c| (c >> 8) as u8));
+            }
+            lodepng::encode24_file(&out_path, &out, img.width(), img.height())
+        },
+        Image::RGBA16(img) => {
+            let mut out = Vec::new();
+            for px in img.pixels() {
+                out.push(px.map(|c| (c >> 8) as u8));
+            }
+            lodepng::encode32_file(&out_path, &out, img.width(), img.height())
+        },
+        Image::Gray16(img) => {
+            let mut out = Vec::new();
+            for px in img.pixels() {
+                out.push((px >> 8) as u8);
+            }
+            lodepng::encode_file(&out_path, &out, img.width(), img.height(), lodepng::ColorType::GREY, 8)
+        },
+    }?;
+    Ok( ())
+
+}
 //解码heif图片为DynamicImage
-/* pub fn decode_heif_image(path: &str) -> ResultAnyErr<DynamicImage> {
+ pub fn decode_heif_image(path: &str) -> ResultAnyErr<DynamicImage> {
     let lib_heif = LibHeif::new();
     let ctx = HeifContext::read_from_file(path)?;
     let handle = ctx.primary_image_handle()?;
     let image = lib_heif.decode(&handle, ColorSpace::Rgb(RgbChroma::Rgb), None)?;
-    println!("{:?} ", image.color_space());
-
     let width = image.width();
     let height = image.height();
     let planes = image.planes();
@@ -263,28 +270,29 @@ impl MediaItem {
         }
     };
     Ok(img)
-} */
+} 
 //压缩图片为webp格式
 pub fn compress_image_webp(image: &DynamicImage, thumbnail: bool) -> ResultAnyErr<WebPMemory> {
-    let mut width = image.width();
-    let mut height = image.height();
-    let webp_mem = if thumbnail {
-        let ratio = height / 256;
-        width = width / ratio;
-        //缩略图
-        let image = image.resize(width, 256, FilterType::Nearest);
-        webp::Encoder::from_image(&image)?.encode(80f32)
+    let (mut width, mut height) = (image.width(), image.height());
+    let (new_width, new_height) = if thumbnail {
+        //长边256
+        if width > height {
+            (256, (256.0 * height as f32 / width as f32).round() as u32)
+        } else {
+            ((256.0 * width as f32 / height as f32).round() as u32, 256)
+        }
     } else {
-        //无高度（L0） 压原图
-        if width > 10240 {
-            width /= 4;
+        //长边2560
+        if width > height {
+            (2560, (2560.0 * height as f32 / width as f32).round() as u32)
+        } else {
+            ((2560.0 * width as f32 / height as f32).round() as u32, 2560)
         }
-        if height > 10240 {
-            height /= 4;
-        }
-        let image = image.resize(width / 2, height / 2, FilterType::Nearest);
-        webp::Encoder::from_image(&image)?.encode(40f32)
     };
+
+    let resized_image = image.resize(new_width, new_height, FilterType::Nearest);
+    let quality = if thumbnail { 60f32 } else { 80f32 };
+    let webp_mem = webp::Encoder::from_image(&resized_image)?.encode(quality);
 
     Ok(webp_mem)
 }
@@ -294,6 +302,7 @@ fn matches_extension(path: &PathBuf, extensions: &[&str]) -> bool {
     if let Some(ext) = path.extension() {
         let ext = ext.to_ascii_lowercase();
         let ext = &ext.to_string_lossy();
+        
         extensions.iter().any(|&e| ext == e)
     } else {
         false
@@ -332,7 +341,7 @@ pub fn get_file_size(path: &PathBuf) -> ResultAnyErr<u64> {
     Ok(meta.len())
 }
 //读取视频第一帧
-pub fn get_video_first_frame(video_path: &String) -> ResultAnyErr<DynamicImage> {
+pub fn get_video_first_frame(video_path: String) -> ResultAnyErr<DynamicImage> {
     let mut ffmpeg_output = Command::new("ffmpeg")
         .arg("-i") // input file
         .arg(video_path) // replace with your file
