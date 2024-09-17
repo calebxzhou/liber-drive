@@ -113,7 +113,8 @@ impl ImageExif {
         //纬度
         let lat = Self::trim_exif_field(&exif, Tag::GPSLatitude);
         //经度
-        let lng = Self::trim_exif_field(&exif, Tag::GPSLongitude);
+        let lng = Self::trim_exif_field(&exif, Tag::GPSLongitude); 
+        //todo 读取xmp:Rating获取图片星级
         let exif: ImageExif = ImageExif {
             make,
             lens,

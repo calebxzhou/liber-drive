@@ -48,6 +48,7 @@ tracing = "0.1.40"
 num_cpus = "1.16.0"
 aom-decode = "0.2.10"
 avif-parse = "1.0.0"
+xmp_toolkit = "1.9"
 [build-dependencies]
 bindgen = "0.65.1"
 
