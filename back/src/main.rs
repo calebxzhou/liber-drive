@@ -51,55 +51,65 @@ macro_rules! match_or_400 {
         }
     };
 }
-//获取全部影集 
-async fn get_albums(
+fn collect_media_from_sub_albums<'a>(album: &'a Album, media_items: &mut Vec<&'a MediaItem>) {
+    for sub_album in album.sub_albums.values() {
+        media_items.extend(sub_album.medias.values());
+        if media_items.len() >= 4 {
+            return;
+        }
+        collect_media_from_sub_albums(sub_album, media_items);
+    }
+}
+fn get_selected_media_items(media_items: Vec<&MediaItem>) -> Vec<String> {
+    if media_items.len() <= 4 {
+        media_items.into_iter().map(|item| item.name.clone()).collect()
+    } else {
+        media_items.into_iter().take(4).map(|item| item.name.clone()).collect()
+    }
+}
+
+async fn list_all_albums(
     Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
 ) -> impl IntoResponse {
-
-    //每个album名称 和第一个照片
-    let mut new_map: HashMap<String, MediaItem> = HashMap::new();
+    let mut new_map: HashMap<String, Vec<String>> = HashMap::new();
 
     for (key, album) in &serv.albums {
-        if let Some((_, first_media_item)) = album.medias.iter().next() {
-            //没有密码的才显示
-            if album.pwd == Option::None {
-                new_map.insert(album.name.clone(), first_media_item.clone());
-            }
+        if album.pwd.is_some() {
+            continue;
         }
+
+        let mut media_items: Vec<&MediaItem> = album.medias.values().collect();
+        //不够4个 去子相册里拿
+        if media_items.len() < 4 {
+            collect_media_from_sub_albums(album, &mut media_items);
+        }
+
+        let selected_items = get_selected_media_items(media_items);
+        new_map.insert(album.name.clone(), selected_items);
     }
+
     Json(&new_map).into_response()
 }
+
 async fn get_album(
     Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
 ) -> impl IntoResponse {
-    // Check if params contain albums_path
-    let albums_path = match params.get("albums_path") {
+    let albums_path = match params.get("path") {
         Some(path) => path,
         None => return StatusCode::BAD_REQUEST.into_response(),
     };
 
     let album_names: Vec<&str> = albums_path.split('/').collect();
-    let album = match_or_404!(find_album(&serv.albums, &album_names) );
+    let album = match_or_404!(find_album(&serv.albums, &album_names));
 
-    //请求缩略图，返回4x MediaItem (第1-2-3-4/5)
     if params.contains_key("tbnl") {
         let media_items: Vec<&MediaItem> = album.medias.values().collect();
-        let media_count = media_items.len();
-
-        if media_count <= 4 {
-            return Json(media_items).into_response();
-        } else {
-            let first_fifth = media_items[media_count / 5];
-            let second_fifth = media_items[2 * media_count / 5];
-            let third_fifth = media_items[3 * media_count / 5];
-            let fourth_fifth = media_items[4 * media_count / 5];
-            let selected_items = vec![first_fifth, second_fifth, third_fifth, fourth_fifth];
-            return Json(selected_items).into_response();
-        }
+        let selected_items = get_selected_media_items(media_items);
+        return Json(selected_items).into_response();
     }
-    //验证密码正确
+
     if let Some(album_pwd) = &album.pwd {
         if let Some(query_pwd) = params.get("pwd") {
             if query_pwd == album_pwd {
@@ -110,15 +120,15 @@ async fn get_album(
     }
 
     Json(album).into_response()
-} 
+}
 
 async fn get_media(
     headers: HeaderMap,
     Query(params): Query<HashMap<String, String>>,
     State(serv): State<&MainService>,
 ) -> Response<Body> {
-    let albums_path = match_or_400!(params.get("albums_path"));
-    let media_name = match_or_400!(params.get("media_name"));
+    let albums_path = match_or_400!(params.get("path"));
+    let media_name = match_or_400!(params.get("name"));
     let album_names: Vec<&str> = albums_path.split('/').collect();
 
     let album = match_or_404!(find_album(&serv.albums, &album_names) );
@@ -202,7 +212,7 @@ async fn main() {
         .route("/media", get(get_media).with_state(serv))
         //读取影集 
         .route("/album", get(get_album).with_state(serv)) 
-        .route("/", get(get_albums).with_state(serv))
+        .route("/", get(list_all_albums).with_state(serv))
         .layer(compression_layer)
         .layer(
             CorsLayer::new()

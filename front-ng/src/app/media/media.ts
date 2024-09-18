@@ -2,8 +2,8 @@ import { v4 as uuidv4 } from "uuid";
 
 export interface Album {
   name: string;
-  size: number;
   medias: { [key: string]: Media };
+  sub_albums: { [key: string]: Album };
 }
 export interface AlbumInfo {
   name: string;
@@ -22,8 +22,8 @@ export function getMediaId(media: Media) {
 }
 export const DefaultAlbum: Album = {
   name: "影集载入中...",
-  size: 0,
   medias: {},
+  sub_albums: {},
 };
 export interface ImageExif {
   make: string; // 相机

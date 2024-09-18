@@ -33,6 +33,7 @@ impl MainService {
                 .map(|e| e.unwrap())
                 .collect::<Vec<DirEntry>>();
             for entry in dir_entries {
+                
                 let album = Self::scan_single_album(entry.path()).unwrap();
                 if album.medias.len() == 0 && album.sub_albums.len() == 0 {
                     info!("跳过空album: {}", album.name);
@@ -56,6 +57,10 @@ impl MainService {
             if media_entry.file_type().is_dir() && path != album_path {
                 // Recursively scan sub-albums
                 let sub_album = Self::scan_single_album(path)?;
+                if sub_album.medias.len() == 0 && sub_album.sub_albums.len() == 0 {
+                    info!("跳过空album: {:?}/{}",album_path, sub_album.name);
+                    continue;
+                }
                 sub_albums.insert(sub_album.name.clone(), sub_album);
                 continue;
             }

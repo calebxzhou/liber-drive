@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse, HttpEvent } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { catchError, Observable, of, switchMap } from "rxjs";
+import { catchError, map, Observable, of, switchMap } from "rxjs";
 import { PageService } from "../page.service";
 import { Album, Media, ImageExif } from "./media";
 import { Router } from "@angular/router";
@@ -16,6 +16,16 @@ export class MediaService {
   ) {}
   fetchAlbumList() {
     return this.http.get<Record<string, Media>>(`${this.getUrl()}/`);
+  }
+  isAlbumHasPassword(albumName: string): Observable<boolean> {
+    return this.http
+      .get<boolean>(`${this.getUrl()}/${albumName}?has_pwd`)
+      .pipe(map((response) => response));
+  }
+  checkAlbumPassword(albumName: string): Observable<boolean> {
+    return this.http
+      .get<boolean>(`${this.getUrl()}/${albumName}?has_pwd`)
+      .pipe(map((response) => response));
   }
   fetchAlbum(albumName: string) {
     return this.http.get<Album>(`${this.getUrl()}/${albumName}`).pipe(
@@ -85,7 +95,6 @@ export class MediaService {
   }
   groupMediaByDay(mediaArray: Media[]): Record<string, Media[]> {
     const grouped: Record<string, Media[]> = {};
-
     mediaArray
       .sort((a, b) => b.time - a.time)
       .forEach((media) => {
