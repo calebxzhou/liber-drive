@@ -14,7 +14,7 @@ use aom_decode::Config;
 use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
 //use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
 use log::{debug, info};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use webp::WebPMemory;
 
 use crate::image_exif::ImageExif;
@@ -23,7 +23,7 @@ use crate::util::{date_str_to_timestamp, filename_to_timestamp, AnyError, Result
 
 //图片/视频
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize,Clone)]
 pub struct MediaItem {
     pub name: String,
     #[serde(skip_serializing)]

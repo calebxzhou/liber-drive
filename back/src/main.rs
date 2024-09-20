@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::PathBuf;
 use std::{env, fs};
-
+use std::sync::Arc;
 use album::Album;
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
@@ -25,7 +25,8 @@ use media_item::MediaItem;
 use media_sender::{handle_file, handle_preview};
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
-
+use rayon::prelude::*;
+use tokio::sync::Mutex;
 use crate::main_service::MainService;
 pub mod album;
 pub mod image_exif;
@@ -70,14 +71,15 @@ fn get_selected_media_items(media_items: Vec<&MediaItem>) -> Vec<String> {
 
 async fn list_all_albums(
     Query(params): Query<HashMap<String, String>>,
-    State(serv): State<&MainService>,
+    State(serv): State<Arc<Mutex<MainService>>>,
 ) -> impl IntoResponse {
+    let serv = serv.lock().await;
     let mut new_map: HashMap<String, Vec<String>> = HashMap::new();
 
     for (key, album) in &serv.albums {
-        if album.pwd.is_some() {
+        /*if album.pwd.is_some() {
             continue;
-        }
+        }*/
 
         let mut media_items: Vec<&MediaItem> = album.medias.values().collect();
         //不够4个 去子相册里拿
@@ -94,16 +96,23 @@ async fn list_all_albums(
 
 async fn get_album(
     Query(params): Query<HashMap<String, String>>,
-    State(serv): State<&MainService>,
+    State(serv): State<Arc<Mutex<MainService>>>,
 ) -> impl IntoResponse {
+    let serv = serv.lock().await;
     let albums_path = match params.get("path") {
         Some(path) => path,
         None => return StatusCode::BAD_REQUEST.into_response(),
     };
-
+   
     let album_names: Vec<&str> = albums_path.split('/').collect();
     let album = match_or_404!(find_album(&serv.albums, &album_names));
-
+    if params.get("has_pwd").is_some(){
+        return if album.pwd.is_some() {
+            "true".into_response()
+        } else {
+            "false".into_response()
+        }
+    }
     if params.contains_key("tbnl") {
         let media_items: Vec<&MediaItem> = album.medias.values().collect();
         let selected_items = get_selected_media_items(media_items);
@@ -125,8 +134,9 @@ async fn get_album(
 async fn get_media(
     headers: HeaderMap,
     Query(params): Query<HashMap<String, String>>,
-    State(serv): State<&MainService>,
+    State(serv): State<Arc<Mutex<MainService>>>,
 ) -> Response<Body> {
+    let serv = serv.lock().await;
     let albums_path = match_or_400!(params.get("path"));
     let media_name = match_or_400!(params.get("name"));
     let album_names: Vec<&str> = albums_path.split('/').collect();
@@ -134,18 +144,23 @@ async fn get_media(
     let album = match_or_404!(find_album(&serv.albums, &album_names) );
 
     let media = match_or_404!( album.medias.get(media_name) );
-    //读取预览
-    if let Some(level) = params.get("tbnl") {
-        return handle_preview(media, if level == "1" { true } else { false }, &headers).await;
-    }
+    
     //验证密码正确
     if let Some(album_pwd) = &album.pwd {
         if let Some(query_pwd) = params.get("pwd") {
             if query_pwd == album_pwd {
-                return handle_file(media, &headers).await;
+                return if let Some(level) = params.get("tbnl") {
+                    handle_preview(media, if level == "1" { true } else { false }, &headers).await
+                } else {
+                    handle_file(media, &headers).await
+                }
             }
         }
         return StatusCode::UNAUTHORIZED.into_response();
+    }
+    //读取预览
+    if let Some(level) = params.get("tbnl") {
+        return handle_preview(media, if level == "1" { true } else { false }, &headers).await;
     }
     //读取视频时长
 
@@ -164,6 +179,7 @@ async fn main() {
     util::logger_init();
     fs::create_dir_all("cache/exif").unwrap();
     fs::create_dir_all("cache/video").unwrap();
+    fs::create_dir_all("cache/service").unwrap();
     fs::create_dir_all("cache").expect("创建缓存目录失败");
     let drive_dirs = util::load_drive_dirs().unwrap();
     let compression_layer = CompressionLayer::new().br(true).compress_when(
@@ -187,32 +203,19 @@ async fn main() {
     );
 
     let serv = MainService::new(&drive_dirs);
-    let serv_copy = serv.clone();
-
-    use rayon::prelude::*;
-    //todo 多线程建立缩略图
-    serv_copy.albums.par_iter().for_each(|(album_name, album)| {
-        println!("Album: {}", album_name);
-        album
-            .medias
-            .par_iter()
-            .for_each(|(media_name, media_item)| {
-                if let Err(e) = media_item.create_preview(true) {
-                    info!("创建小图错误：{:?}", e);
-                }
-                if let Err(e) = media_item.create_preview(false) {
-                    info!("创建大图错误：{:?}", e);
-                }
-            });
-    });
-    let serv = Box::leak(Box::new(serv));
+    
+    {
+        let serv = serv.lock().await;
+        info!("ok 共{}个相册", serv.albums.len());
+        
+    }
     let app = Router::new()
 
         //读取照片视频
-        .route("/media", get(get_media).with_state(serv))
+        .route("/media", post(get_media).with_state(serv.clone()))
         //读取影集 
-        .route("/album", get(get_album).with_state(serv)) 
-        .route("/", get(list_all_albums).with_state(serv))
+        .route("/album", post(get_album).with_state(serv.clone())) 
+        .route("/", get(list_all_albums).with_state(serv.clone()))
         .layer(compression_layer)
         .layer(
             CorsLayer::new()

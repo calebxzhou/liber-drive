@@ -73,9 +73,9 @@ export class AlbumComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.route.paramMap.subscribe((params) => {
-      this.albumName = params.get("albumName")!;
-      let test = params.get("viewer_test");
+    this.route.queryParams.subscribe((params) => {
+      this.albumName = params["path"]!;
+      let test = params["test"];
       this.mediaService.fetchAlbum(this.albumName).subscribe((album) => {
         if (!album) return;
         this.album = album;

@@ -23,10 +23,10 @@ import { LAZYLOAD_IMAGE_HOOKS, ScrollHooks } from "ng-lazyload-image";
 export const routes: Routes = [
   { path: "home", component: HomeComponent },
   {
-    path: ":albumName/:test",
+    path: "album/:test",
     component: AlbumComponent,
   },
-  { path: ":albumName", component: AlbumComponent },
+  { path: "album", component: AlbumComponent },
   { path: "", redirectTo: "/home", pathMatch: "full" },
   { path: "**", redirectTo: "/home", pathMatch: "full" },
 ];

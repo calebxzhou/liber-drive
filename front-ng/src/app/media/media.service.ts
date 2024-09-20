@@ -1,43 +1,79 @@
 import { HttpClient, HttpErrorResponse, HttpEvent } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { catchError, map, Observable, of, switchMap } from "rxjs";
+import {
+  catchError,
+  map,
+  Observable,
+  of,
+  switchMap,
+  tap,
+  throwError,
+} from "rxjs";
 import { PageService } from "../page.service";
 import { Album, Media, ImageExif } from "./media";
 import { Router } from "@angular/router";
+import { MatDialog } from "@angular/material/dialog";
+import { PasswordDialogComponent } from "../password-dialog/password-dialog.component";
 
 @Injectable({
   providedIn: "root",
 })
 export class MediaService {
+  pwd = "";
   constructor(
     private http: HttpClient,
     private page: PageService,
-    private router: Router
+    private router: Router,
+    private dialog: MatDialog
   ) {}
-  fetchAlbumList() {
-    return this.http.get<Record<string, Media>>(`${this.getUrl()}/`);
+  listAllAlbums() {
+    return this.http.get<Record<string, string[]>>(`${this.getUrl()}/`);
   }
-  isAlbumHasPassword(albumName: string): Observable<boolean> {
-    return this.http
-      .get<boolean>(`${this.getUrl()}/${albumName}?has_pwd`)
-      .pipe(map((response) => response));
-  }
-  checkAlbumPassword(albumName: string): Observable<boolean> {
-    return this.http
-      .get<boolean>(`${this.getUrl()}/${albumName}?has_pwd`)
-      .pipe(map((response) => response));
+  private promptForPassword() {
+    const dialogRef = this.dialog.open(PasswordDialogComponent);
+    return dialogRef.afterClosed();
   }
   fetchAlbum(albumName: string) {
-    return this.http.get<Album>(`${this.getUrl()}/${albumName}`).pipe(
-      catchError((error: HttpErrorResponse) => {
-        if (error.status !== 200) {
-          alert(`相册${albumName}不存在`);
-          this.router.navigate(["/"]);
-        }
-        return of(null);
-      })
-    );
+    return this.http
+      .get<Album>(`${this.getUrl()}/album?path=${albumName}`)
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          if (error.status === 401) {
+            return this.promptForPassword().pipe(
+              switchMap((password) => {
+                if (password) {
+                  return this.http
+                    .get<Album>(
+                      `${this.getUrl()}/album?path=${albumName}&pwd=${password}`
+                    )
+                    .pipe(
+                      tap(() => {
+                        // Set the global password if the request is successful
+                        this.pwd = password;
+                      }),
+                      catchError((innerError: HttpErrorResponse) => {
+                        if (innerError.status === 401) {
+                          alert("密码错误");
+                          this.router.navigate(["/"]);
+                          return of(null);
+                        }
+                        return throwError(innerError);
+                      })
+                    );
+                } else {
+                  return throwError(error);
+                }
+              })
+            );
+          } else if (error.status !== 200) {
+            alert(`相册${albumName}不存在`);
+            this.router.navigate(["/"]);
+          }
+          return of(null);
+        })
+      );
   }
+
   getUrl(): string {
     return `https://${this.page.getHostName()}:7789`;
   }
@@ -49,9 +85,9 @@ export class MediaService {
     });
   }
   fetchMediaUrl(albumName: string, mediaName: string, tbnl: number) {
-    return `${this.getUrl()}/${albumName}/${mediaName}${
-      tbnl > -1 ? `?tbnl=${tbnl}` : ""
-    }`;
+    return `${this.getUrl()}/media?path=${albumName}&name=${mediaName}&pwd=${
+      this.pwd
+    }${tbnl > -1 ? `&tbnl=${tbnl}` : ""}`;
   }
   fetchImageExif(albumName: string, mediaName: string): Observable<ImageExif> {
     return this.http.get<ImageExif>(
@@ -66,21 +102,15 @@ export class MediaService {
   ): Observable<HttpEvent<Blob>> {
     return this.fetchBlob(this.fetchMediaUrl(albumName, mediaName, tbnl));
   }
-  getAlbumTbnlUrl(albumName: string, firstMedia: Media): string {
-    return `${this.getUrl()}/${albumName}/${firstMedia.name}?tbnl=1`;
+  getAlbumTbnlUrls(albumName: string, tbnlNames: string[]): string[] {
+    return tbnlNames.map(
+      (tbnl) =>
+        `${this.getUrl()}/media?path=${albumName}&name=${tbnl}&tbnl=1&pwd=${
+          this.pwd
+        }`
+    );
   }
-  getAlbumTbnl(albumName: string): Observable<HttpEvent<Blob>> {
-    return this.http
-      .get(`${this.getUrl()}/${albumName}?tbnl=1`, {
-        responseType: "text",
-      })
-      .pipe(
-        switchMap((tbnlName) => {
-          // Assuming tbnlName is the name of the media file you want to fetch
-          return this.fetchMedia(albumName, tbnlName, 1);
-        })
-      );
-  }
+
   isVideo(media: Media) {
     return (
       media.name.toLocaleLowerCase().endsWith(".mp4") ||

@@ -1,26 +1,83 @@
 use crate::album::Album;
 use crate::util::ResultAnyErr;
-use log::info;
+use log::{debug, error, info};
 use std::collections::HashMap;
 use std::fs::{self, DirEntry, File};
 use std::io::{stdout, Read, Write};
 use std::path::PathBuf;
+use std::sync::Arc;
+use rayon::prelude::*;
+use tokio::sync::{  Mutex};
+use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
-
+use tokio::time::{self, Duration};
 use crate::media_item::{self, is_jpg_image, is_video, MediaItem};
-#[derive(Clone)]
+#[derive(Clone,Serialize,Deserialize)]
 pub struct MainService {
     pub albums: HashMap<String, Album>,
 }
 impl MainService {
-    pub fn new(drive_dirs: &Vec<PathBuf>) -> Self {
+    pub fn new(drive_dirs: &Vec<PathBuf>) -> Arc<Mutex<Self>> {
         let albums = Self::scan_all_albums(drive_dirs).expect("扫描相册错误！");
+        let slf = Self { albums };
+        slf.build_tbnls();
+        let service = Arc::new(Mutex::new(slf));
 
-        info!("共{}个相册", albums.len());
-        Self { albums }
+        // Clone drive_dirs to move it into the async block
+        let drive_dirs_clone = drive_dirs.clone();
+        let service_clone = Arc::clone(&service);
+        // 10min更新一次
+        tokio::spawn(async move {
+            let mut interval = time::interval(Duration::from_secs(600));
+            interval.tick().await; // Initial delay
+            loop {
+                interval.tick().await;
+                let drive_dirs_clone = drive_dirs_clone.clone();
+                let service_clone = Arc::clone(&service_clone);
+                tokio::spawn(async move {
+                    let mut service = service_clone.lock().await;
+                    service.update_albums(&drive_dirs_clone).await;
+                });
+            }
+        });
+
+        service
     }
-   
-
+    async fn update_albums(&mut self, drive_dirs: &Vec<PathBuf>) {
+        match Self::scan_all_albums(drive_dirs) {
+            Ok(new_albums) => {
+                self.albums = new_albums;
+                self.build_tbnls();
+                info!("Albums updated successfully.");
+            }
+            Err(e) => {
+                error!("Failed to update albums: {:?}", e);
+            }
+        }
+    }
+    fn build_tbnls(&self){
+        // 多线程建立缩略图
+        let albums = &self.albums;
+        rayon::join(
+            || {
+                albums.par_iter().for_each(|(album_name, album)| {
+                    info!("开始建立缩略图: {}", album_name);
+                    album.medias.par_iter().for_each(|(media_name, media_item)| {
+                        if let Err(e) = media_item.create_preview(true) {
+                            error!("创建小图错误：{:?}", e);
+                        }
+                        if let Err(e) = media_item.create_preview(false) {
+                            error!("创建大图错误：{:?}", e);
+                        }
+                    });
+                });
+            },
+            || {
+                // This empty closure ensures that the join function waits for the first closure to complete
+            },
+        );
+        info!("缩略图OK");
+    }
     //单个影集
     fn scan_all_albums(drive_dirs: &Vec<PathBuf>) -> ResultAnyErr<HashMap<String, Album>> {
         let mut all_albums = HashMap::new();
@@ -33,10 +90,9 @@ impl MainService {
                 .map(|e| e.unwrap())
                 .collect::<Vec<DirEntry>>();
             for entry in dir_entries {
-                
+
                 let album = Self::scan_single_album(entry.path()).unwrap();
                 if album.medias.len() == 0 && album.sub_albums.len() == 0 {
-                    info!("跳过空album: {}", album.name);
                     continue;
                 }
                 all_albums.insert(album.name.clone(), album);
@@ -58,13 +114,13 @@ impl MainService {
                 // Recursively scan sub-albums
                 let sub_album = Self::scan_single_album(path)?;
                 if sub_album.medias.len() == 0 && sub_album.sub_albums.len() == 0 {
-                    info!("跳过空album: {:?}/{}",album_path, sub_album.name);
+                    //debug!("跳过空album: {:?}/{}",album_path, sub_album.name);
                     continue;
                 }
                 sub_albums.insert(sub_album.name.clone(), sub_album);
                 continue;
             }
-           
+
 
             let name = media_entry.file_name().to_string_lossy().into_owned();
             //密码
@@ -89,17 +145,17 @@ impl MainService {
             let mut media = MediaItem::new(path, name.clone(), time, size);
             if is_jpg_image(&media.path) {
                 if let Err(e) = media.create_exif_cache() {
-                    info!("创建exif错误，{:?}", e);
+                    error!("创建exif错误，{:?}", e);
                 }
                 if let Err(e) = media.read_exif_cache() {
-                    info!("读取exif错误，{:?}", e);
+                    error!("读取exif错误，{:?}", e);
                 }
             } else if is_video(&media.path) {
                 if let Err(e) = media.create_video_duration_cache() {
-                    info!("创建video cache错误，{:?}", e);
+                    error!("创建video cache错误，{:?}", e);
                 };
                 if let Err(e) = media.read_video_duration_cache() {
-                    info!("读取video cache错误，{:?}", e);
+                    error!("读取video cache错误，{:?}", e);
                 };
             }
             media.update_media_time();

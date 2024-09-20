@@ -1,12 +1,12 @@
 use core::fmt;
 use std::collections::HashMap;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::media_item::MediaItem;
 
 //影集
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize,Clone)]
 pub struct Album {
     pub name: String,
     pub medias: HashMap<String, MediaItem>,
