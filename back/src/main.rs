@@ -26,8 +26,9 @@ use media_sender::{handle_file, handle_preview};
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use rayon::prelude::*;
+use serde::Deserialize;
 use tokio::sync::Mutex;
-use crate::main_service::MainService;
+use crate::main_service::{MainService, SharedService};
 pub mod album;
 pub mod image_exif;
 pub mod main_service;
@@ -52,7 +53,7 @@ macro_rules! match_or_400 {
         }
     };
 }
-fn collect_media_from_sub_albums<'a>(album: &'a Album, media_items: &mut Vec<&'a MediaItem>) {
+pub fn collect_media_from_sub_albums<'a>(album: &'a Album, media_items: &mut Vec<&'a MediaItem>) {
     for sub_album in album.sub_albums.values() {
         media_items.extend(sub_album.medias.values());
         if media_items.len() >= 4 {
@@ -71,9 +72,9 @@ fn get_selected_media_items(media_items: Vec<&MediaItem>) -> Vec<String> {
 
 async fn list_all_albums(
     Query(params): Query<HashMap<String, String>>,
-    State(serv): State<Arc<Mutex<MainService>>>,
+    State(serv): State<SharedService>,
 ) -> impl IntoResponse {
-    let serv = serv.lock().await;
+    let serv = serv.read().await;
     let mut new_map: HashMap<String, Vec<String>> = HashMap::new();
 
     for (key, album) in &serv.albums {
@@ -92,18 +93,19 @@ async fn list_all_albums(
     }
 
     Json(&new_map).into_response()
-}
+} 
+#[axum_macros::debug_handler] 
 
 async fn get_album(
     Query(params): Query<HashMap<String, String>>,
-    State(serv): State<Arc<Mutex<MainService>>>,
+    State(serv): State<SharedService>,
 ) -> impl IntoResponse {
-    let serv = serv.lock().await;
+    let serv = serv.read().await;
     let albums_path = match params.get("path") {
         Some(path) => path,
         None => return StatusCode::BAD_REQUEST.into_response(),
     };
-   
+
     let album_names: Vec<&str> = albums_path.split('/').collect();
     let album = match_or_404!(find_album(&serv.albums, &album_names));
     if params.get("has_pwd").is_some(){
@@ -122,21 +124,22 @@ async fn get_album(
     if let Some(album_pwd) = &album.pwd {
         if let Some(query_pwd) = params.get("pwd") {
             if query_pwd == album_pwd {
-                return Json(album).into_response();
+                return Json(album.clone().into_info()).into_response();
             }
         }
         return StatusCode::UNAUTHORIZED.into_response();
     }
-
-    Json(album).into_response()
+     
+    Json(album.clone().into_info()).into_response()
 }
+
 
 async fn get_media(
     headers: HeaderMap,
     Query(params): Query<HashMap<String, String>>,
-    State(serv): State<Arc<Mutex<MainService>>>,
+    State(serv): State<SharedService>,
 ) -> Response<Body> {
-    let serv = serv.lock().await;
+    let serv = serv.read().await;
     let albums_path = match_or_400!(params.get("path"));
     let media_name = match_or_400!(params.get("name"));
     let album_names: Vec<&str> = albums_path.split('/').collect();
@@ -144,7 +147,7 @@ async fn get_media(
     let album = match_or_404!(find_album(&serv.albums, &album_names) );
 
     let media = match_or_404!( album.medias.get(media_name) );
-    
+
     //验证密码正确
     if let Some(album_pwd) = &album.pwd {
         if let Some(query_pwd) = params.get("pwd") {
@@ -205,16 +208,15 @@ async fn main() {
     let serv = MainService::new(&drive_dirs);
     
     {
-        let serv = serv.lock().await;
+        let serv = serv.read().await;
         info!("ok 共{}个相册", serv.albums.len());
-        
     }
     let app = Router::new()
 
         //读取照片视频
-        .route("/media", post(get_media).with_state(serv.clone()))
+        .route("/media", get(get_media).with_state(serv.clone()))
         //读取影集 
-        .route("/album", post(get_album).with_state(serv.clone())) 
+        .route("/album", get(get_album).with_state(serv.clone())) 
         .route("/", get(list_all_albums).with_state(serv.clone()))
         .layer(compression_layer)
         .layer(

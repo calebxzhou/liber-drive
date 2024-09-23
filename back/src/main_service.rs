@@ -1,4 +1,4 @@
-use crate::album::Album;
+use crate::album::{Album, AlbumInfo};
 use crate::util::ResultAnyErr;
 use log::{debug, error, info};
 use std::collections::HashMap;
@@ -7,21 +7,22 @@ use std::io::{stdout, Read, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 use rayon::prelude::*;
-use tokio::sync::{  Mutex};
+use tokio::sync::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 use tokio::time::{self, Duration};
 use crate::media_item::{self, is_jpg_image, is_video, MediaItem};
-#[derive(Clone,Serialize,Deserialize)]
+pub type SharedService = Arc<RwLock<MainService>>;
+#[derive(Clone,Serialize)]
 pub struct MainService {
-    pub albums: HashMap<String, Album>,
+    pub albums: HashMap<String, Album>, 
 }
 impl MainService {
-    pub fn new(drive_dirs: &Vec<PathBuf>) -> Arc<Mutex<Self>> {
+    pub fn new(drive_dirs: &Vec<PathBuf>) -> SharedService {
         let albums = Self::scan_all_albums(drive_dirs).expect("扫描相册错误！");
         let slf = Self { albums };
         slf.build_tbnls();
-        let service = Arc::new(Mutex::new(slf));
+        let service = Arc::new(RwLock::new(slf));
 
         // Clone drive_dirs to move it into the async block
         let drive_dirs_clone = drive_dirs.clone();
@@ -35,7 +36,7 @@ impl MainService {
                 let drive_dirs_clone = drive_dirs_clone.clone();
                 let service_clone = Arc::clone(&service_clone);
                 tokio::spawn(async move {
-                    let mut service = service_clone.lock().await;
+                    let mut service = service_clone.write().await;
                     service.update_albums(&drive_dirs_clone).await;
                 });
             }
@@ -100,7 +101,7 @@ impl MainService {
         }
         Ok(all_albums)
     }
-
+   
     //单个影集
     fn scan_single_album(album_path: PathBuf) -> ResultAnyErr<Album> {
         let mut album_medias = HashMap::new();

@@ -33,7 +33,14 @@ pub struct MediaItem {
     pub exif: Option<ImageExif>,
     pub duration: Option<u16>,
 }
-
+#[derive(Serialize, Deserialize,Clone)]
+pub struct MediaItemInfo {
+    pub name: String, 
+    pub time: u64,
+    pub size: u64,
+    pub exif: Option<ImageExif>,
+    pub duration: Option<u16>,
+}
 impl MediaItem {
     pub fn new(path: PathBuf, name: String, time: u64, size: u64) -> Self {
         Self {
@@ -273,7 +280,7 @@ pub fn decode_avif_image(path: &Path) -> ResultAnyErr<()> {
 } 
 //压缩图片为webp格式
 pub fn compress_image_webp(image: &DynamicImage, thumbnail: bool) -> ResultAnyErr<WebPMemory> {
-    let (mut width, mut height) = (image.width(), image.height());
+    let (width, height) = (image.width(), image.height());
     let (new_width, new_height) = if thumbnail {
         //长边256
         if width > height {

@@ -14,6 +14,7 @@ import { ImageTbnlComponent } from "../image-tbnl/image-tbnl.component";
 import { LOADING_GIF } from "../const";
 import { LazyLoadImageModule } from "ng-lazyload-image";
 import { Location } from "@angular/common";
+import { AlbumTbnlComponent } from "../album-tbnl/album-tbnl.component";
 
 @Component({
   selector: "lg-album",
@@ -23,6 +24,12 @@ import { Location } from "@angular/common";
   .img-grid{
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    grid-gap: 1px;
+  }
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 0.8fr));
+    grid-auto-rows: 1fr;
     grid-gap: 1px;
   }
   .grid-item{
@@ -43,6 +50,7 @@ import { Location } from "@angular/common";
     MatExpansionModule,
     ImageTbnlComponent,
     LazyLoadImageModule,
+    AlbumTbnlComponent,
   ],
 })
 export class AlbumComponent implements OnInit {
@@ -58,8 +66,6 @@ export class AlbumComponent implements OnInit {
   //要看大图的图片（当前日期下）
   mediasBeingViewed: Media[] = [];
   dateViewingNow = "";
-  imageAmount = 0;
-  videoAmount = 0;
   //日期折叠
   visibleGroups: { [key: string]: boolean } = {};
   //日期分组图片
@@ -82,8 +88,6 @@ export class AlbumComponent implements OnInit {
         let medias = Object.values(this.album.medias);
         this.medias = medias;
         let groups = this.mediaService.groupMediaByDay(medias);
-        this.videoAmount = medias.filter((m) => this.isVideo(m)).length;
-        this.imageAmount = medias.length - this.videoAmount;
         this.mediaGroups = groups;
         this.visibleGroups[Object.keys(groups)[0]] = true;
         this.title = `${album.name}(${medias.length})`;
@@ -102,12 +106,6 @@ export class AlbumComponent implements OnInit {
   }
   getVideoDuration(media: Media) {
     return this.mediaService.formatDuration(media.duration ?? 0);
-  }
-  getDateVideoAmount(date: string) {
-    return this.getMediasByDate(date).filter((m) => this.isVideo(m)).length;
-  }
-  getDateImageAmount(date: string) {
-    return this.getMediasByDate(date).filter((m) => !this.isVideo(m)).length;
   }
   isVideo(media: Media): boolean {
     return this.mediaService.isVideo(media);

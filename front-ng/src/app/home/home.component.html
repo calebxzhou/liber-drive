@@ -1,23 +1,5 @@
-<lg-album-grid [albums]="albums"></lg-album-grid>
-
-<!-- <mat-list>
-  <div
-    style="float: left"
-    class="hover:bg-gray-200 cursor-pointer"
-    *ngFor="let album of albums "
-  >
-    <mat-list-item (click)="goAlbum(album.key)">
-      <img matListItemAvatar [src]="album.value." alt="..." />
-      <h3 matListItemTitle>{{ album.name }}</h3>
-      <p matListItemLine>
-        <span>{{ album.media_amount }}图</span>
-        <span> {{ album.size }}</span>
-      </p>
-    </mat-list-item>
+<div class="grid-container p-1">
+  <div *ngFor="let album of albums">
+    <lg-album-tbnl [album]="album"></lg-album-tbnl>
   </div>
-</mat-list>
-<div>
-  <h2>{{ album.key }}</h2>
-  <p>Time: {{ album.value.time }}</p>
-  <p>Size: {{ album.value.size }}</p>
- Render other properties of the album -->
+</div>

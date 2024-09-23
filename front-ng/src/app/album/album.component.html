@@ -3,6 +3,14 @@
   <div *ngIf="mediaGroups == {}">
     <p class="text-2xl">载入中....</p>
   </div>
+  <div class="p-2">
+    <div class="grid-container">
+      <lg-album-tbnl
+        *ngFor="let sub_album of album.sub_albums"
+        [album]="sub_album"
+      ></lg-album-tbnl>
+    </div>
+  </div>
   <div
     #imageGrid
     *ngFor="let group of mediaGroups | keyvalue : reverseOrder"
@@ -13,12 +21,12 @@
       (click)="toggleVisibility(group.key)"
     >
       <span>{{ date(group.key) }}</span>
-      <span *ngIf="getDateImageAmount(group.key) as imageAmount" class="text-sm"
+      <!-- <span *ngIf="getDateImageAmount(group.key) as imageAmount" class="text-sm"
         >🖼️{{ imageAmount }}图片
       </span>
       <span *ngIf="getDateVideoAmount(group.key) as videoAmount" class="text-sm"
         >🎬{{ videoAmount }}视频
-      </span>
+      </span> -->
       <span class="p-2 text-sm hover:bg-slate-300" *ngIf="!isVisible(group.key)"
         >▼展开</span
       >

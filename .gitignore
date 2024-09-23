@@ -10,7 +10,11 @@ front-ng/node_modules
 front-ng/.angular
 front-ng/dist
 front/
+.cargo
+.ci
 *.local
+back/test
+back/.idea
 back/cache
 back/target
 # Editor directories and files

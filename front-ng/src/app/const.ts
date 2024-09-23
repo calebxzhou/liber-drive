@@ -14,7 +14,8 @@ export const FILE_TYPE_EXTENSION = {
   word: ["doc", "docx"],
 };
 
-export const LOADING_GIF = "assets/loading.svg";
+export const LOADING_GIF = "assets/icon/loading.svg";
+export const ICON_LOCK = "assets/icon/lock.svg";
 export const MIN_TBNL_SIDELEN = 112;
 export const MAX_TBNL_SIDELEN = 192;
 export const LBS_KEY = "IQJBZ-AKBCI-CBMGL-5GJ53-UJHNQ-RQBOV";

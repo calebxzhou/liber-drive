@@ -2,12 +2,13 @@ import { v4 as uuidv4 } from "uuid";
 
 export interface Album {
   name: string;
-  medias: { [key: string]: Media };
-  sub_albums: { [key: string]: Album };
+  medias: Media[];
+  sub_albums: AlbumInfo[];
 }
 export interface AlbumInfo {
+  parent: string | undefined;
   name: string;
-  tbnl_urls: string[];
+  tbnl_names: string[];
 }
 export interface Media {
   name: string;
@@ -21,8 +22,8 @@ export function getMediaId(media: Media) {
 }
 export const DefaultAlbum: Album = {
   name: "影集载入中...",
-  medias: {},
-  sub_albums: {},
+  medias: [],
+  sub_albums: [],
 };
 export interface ImageExif {
   make: string; // 相机

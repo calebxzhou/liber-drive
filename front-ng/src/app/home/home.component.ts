@@ -1,7 +1,6 @@
 import { CommonModule } from "@angular/common";
 import { Component, OnInit } from "@angular/core";
 import { Router, RouterModule } from "@angular/router";
-import { AlbumPreviewComponent } from "../album-preview/album-preview.component";
 import { Title } from "@angular/platform-browser";
 import { MatButtonModule } from "@angular/material/button";
 import { MediaService } from "../media/media.service";
@@ -10,42 +9,47 @@ import { MatListModule } from "@angular/material/list";
 import { Album, AlbumInfo, Media } from "../media/media";
 import { toReadableSize } from "../util";
 import { Pipe, PipeTransform } from "@angular/core";
-import { AlbumGridComponent } from "../album-grid/album-grid.component";
+import { AlbumTbnlComponent } from "../album-tbnl/album-tbnl.component";
 
 @Component({
   selector: "lg-home",
   standalone: true,
   imports: [
     CommonModule,
-    AlbumPreviewComponent,
     RouterModule,
     MatButtonModule,
     MatGridListModule,
     MatListModule,
-    AlbumGridComponent,
+    AlbumTbnlComponent,
   ],
   templateUrl: "./home.component.html",
-  styles: ``,
+  styles: `
+  
+  .grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 0.8fr));
+    grid-auto-rows: 1fr;
+    grid-gap: 1px;
+  }
+ 
+  `,
 })
 export class HomeComponent implements OnInit {
   albums: AlbumInfo[] = [];
   constructor(private router: Router, private ms: MediaService) {}
   ngOnInit(): void {
-    //修改时间倒序
-    this.ms.fetchAlbumList().subscribe((albums) => {
+    this.ms.pwd = undefined;
+    this.ms.listAllAlbums().subscribe((albums) => {
       this.albums = Object.keys(albums)
         .map((albumName) => {
-          let media = albums[albumName];
+          let mediaNames = albums[albumName];
           return {
+            parent: undefined,
             name: albumName,
-            tbnl_url: this.ms.getAlbumTbnlUrl(albumName, media),
-            latest_media_time: media.time,
+            tbnl_names: mediaNames,
           };
         })
-        .sort((a, b) => b.latest_media_time - a.latest_media_time);
+        .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by album name
     });
-  }
-  goAlbum(name: string) {
-    this.router.navigate(["/" + name]);
   }
 }

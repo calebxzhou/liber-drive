@@ -250,7 +250,7 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   fetch(media: Media, original: boolean) {
     let t1 = Date.now();
     this.mediaService
-      .fetchMedia(this.albumName, media.name, original ? -1 : 0)
+      .fetchMediaEvent(this.albumName, media.name, original ? -1 : 0)
       .subscribe((event: HttpEvent<any>) => {
         if (event.type === HttpEventType.DownloadProgress) {
           this.loadProgress =

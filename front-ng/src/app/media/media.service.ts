@@ -11,26 +11,40 @@ import {
 } from "rxjs";
 import { PageService } from "../page.service";
 import { Album, Media, ImageExif } from "./media";
-import { Router } from "@angular/router";
-import { MatDialog } from "@angular/material/dialog";
+import { ActivatedRoute, Router } from "@angular/router";
+import { MatDialog, MatDialogConfig } from "@angular/material/dialog";
 import { PasswordDialogComponent } from "../password-dialog/password-dialog.component";
 
 @Injectable({
   providedIn: "root",
 })
 export class MediaService {
-  pwd = "";
+  pwd: string | undefined;
   constructor(
     private http: HttpClient,
+
+    private route: ActivatedRoute,
     private page: PageService,
     private router: Router,
     private dialog: MatDialog
   ) {}
+  clearStates() {
+    this.pwd = undefined;
+  }
   listAllAlbums() {
     return this.http.get<Record<string, string[]>>(`${this.getUrl()}/`);
   }
+  goAlbum(name: string) {
+    const pathNow = this.route.snapshot.queryParams["path"];
+    const path = pathNow ? pathNow + "/" + name : name;
+    this.router.navigate(["/album"], {
+      queryParams: { path },
+    });
+  }
   private promptForPassword() {
-    const dialogRef = this.dialog.open(PasswordDialogComponent);
+    const dialogConfig = new MatDialogConfig();
+    dialogConfig.disableClose = true; // Prevent closing by clicking outside
+    const dialogRef = this.dialog.open(PasswordDialogComponent, dialogConfig);
     return dialogRef.afterClosed();
   }
   fetchAlbum(albumName: string) {
@@ -77,40 +91,24 @@ export class MediaService {
   getUrl(): string {
     return `https://${this.page.getHostName()}:7789`;
   }
-  fetchBlob(url: string): Observable<HttpEvent<Blob>> {
-    return this.http.get(url, {
+  fetchMediaUrl(albumName: string, mediaName: string, tbnl: number) {
+    return `${this.getUrl()}/media?path=${albumName}&name=${mediaName}${
+      tbnl > -1 ? `&tbnl=${tbnl}` : ""
+    }${this.pwd ? `&pwd=${this.pwd}` : ""}`;
+  }
+  //tbnl：预览 -1原图 0大图 1小图
+
+  fetchMediaEvent(
+    path: string,
+    name: string,
+    tbnl: number
+  ): Observable<HttpEvent<Blob>> {
+    return this.http.get(this.fetchMediaUrl(path, name, tbnl), {
       responseType: "blob",
       reportProgress: true,
       observe: "events",
     });
   }
-  fetchMediaUrl(albumName: string, mediaName: string, tbnl: number) {
-    return `${this.getUrl()}/media?path=${albumName}&name=${mediaName}&pwd=${
-      this.pwd
-    }${tbnl > -1 ? `&tbnl=${tbnl}` : ""}`;
-  }
-  fetchImageExif(albumName: string, mediaName: string): Observable<ImageExif> {
-    return this.http.get<ImageExif>(
-      `${this.getUrl()}/${albumName}/${mediaName}?exif=1`
-    );
-  }
-  //tbnl：预览 -1原图 0大图 1小图
-  fetchMedia(
-    albumName: string,
-    mediaName: string,
-    tbnl: number
-  ): Observable<HttpEvent<Blob>> {
-    return this.fetchBlob(this.fetchMediaUrl(albumName, mediaName, tbnl));
-  }
-  getAlbumTbnlUrls(albumName: string, tbnlNames: string[]): string[] {
-    return tbnlNames.map(
-      (tbnl) =>
-        `${this.getUrl()}/media?path=${albumName}&name=${tbnl}&tbnl=1&pwd=${
-          this.pwd
-        }`
-    );
-  }
-
   isVideo(media: Media) {
     return (
       media.name.toLocaleLowerCase().endsWith(".mp4") ||

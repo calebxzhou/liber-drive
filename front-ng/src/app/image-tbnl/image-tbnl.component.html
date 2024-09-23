@@ -1,14 +1,5 @@
-<div #imageTbnl class="relative cursor-pointer">
-  <img
-    class="w-48 h-32 object-cover object-center"
-    [defaultImage]="defaultImageUrl"
-    [lazyLoad]="imageUrl"
-    loading="lazy"
-  />
-  <div
-    *ngIf="isVideo"
-    class="absolute bottom-2 left-2 w-1/2 text-white bg-opacity-70 bg-black text-2xs rounded-3xl pl-1 pr-2"
-  >
-    ▶{{ videoDuration }}
-  </div>
-</div>
+<img
+  [lazyLoad]="imageUrl"
+  loading="lazy"
+  [style.border-radius]="borderRadius"
+/>

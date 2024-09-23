@@ -15,17 +15,7 @@ macro_rules! str_err {
     ($e:expr) => {
         Box::<dyn std::error::Error>::from($e.to_string()) as Box<dyn std::error::Error>
     };
-}
-pub fn human_readable_size(bytes: u64) -> String {
-    const UNITS: [&str; 9] = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-    let mut size = bytes as f64;
-    let mut i = 0;
-    while size >= 1024.0 && i < UNITS.len() - 1 {
-        size /= 1024.0;
-        i += 1;
-    }
-    format!("{:.2} {}", size, UNITS[i])
-}
+} 
 
 pub fn convert_http_date_to_u64(header_value: &HeaderValue) -> Result<u64, AnyError> {
     // Convert the HeaderValue to a str

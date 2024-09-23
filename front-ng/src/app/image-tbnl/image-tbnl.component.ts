@@ -4,38 +4,49 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MediaService } from "../media/media.service";
 import { Media } from "../media/media";
 import { LazyLoadImageModule } from "ng-lazyload-image";
-import { LOADING_GIF } from "../const";
+import { ICON_LOCK, LOADING_GIF } from "../const";
+import {
+  HttpEventType,
+  HttpErrorResponse,
+  HttpStatusCode,
+} from "@angular/common/http";
 @Component({
   selector: "lg-image-tbnl",
   standalone: true,
   imports: [CommonModule, MatProgressSpinnerModule, LazyLoadImageModule],
   templateUrl: "./image-tbnl.component.html",
   styles: `
+   img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensures the image covers the area without white borders */
+    object-position: center; /* Centers the image */ 
+  }
   `,
 })
 // 缩略图
-export class ImageTbnlComponent implements OnInit, OnDestroy {
-  @Input() media!: Media;
-  @Input() galleryName!: string;
-  @Input() albumName!: string;
-  isVideo = false;
-  state: string = "initial";
-  videoDuration = "视频";
-  progress: number = 0;
+export class ImageTbnlComponent implements OnInit {
+  @Input() path!: string;
+  @Input() name!: string;
+  @Input() borderRadius: string = "";
   imageUrl: string = LOADING_GIF;
-  defaultImageUrl = LOADING_GIF;
+
   constructor(private ms: MediaService) {}
 
   ngOnInit(): void {
-    //获取缩略图
-    this.imageUrl = this.ms.fetchMediaUrl(this.albumName, this.media.name, 1);
-    this.isVideo = this.ms.isVideo(this.media);
-    setTimeout(() => {
-      this.state = "normal";
-    }, 0);
-    if (this.isVideo && this.media.duration) {
-      this.videoDuration = this.ms.formatDuration(this.media.duration);
-    }
+    this.ms.fetchMediaEvent(this.path, this.name, 1).subscribe(
+      (event) => {
+        if (event.type === HttpEventType.Response) {
+          const blob = event.body as Blob;
+          const objectUrl = URL.createObjectURL(blob);
+          this.imageUrl = objectUrl;
+        }
+      },
+      (error: HttpErrorResponse) => {
+        if (error.status === HttpStatusCode.Unauthorized) {
+          this.imageUrl = ICON_LOCK;
+        }
+      }
+    );
   }
-  ngOnDestroy(): void {}
 }

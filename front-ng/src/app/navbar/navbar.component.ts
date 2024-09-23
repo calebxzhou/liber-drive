@@ -3,6 +3,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIcon } from "@angular/material/icon";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { Router, ActivatedRoute } from "@angular/router";
+import { MediaService } from "../media/media.service";
 
 @Component({
   selector: "lg-navbar",
@@ -27,11 +28,28 @@ import { Router, ActivatedRoute } from "@angular/router";
 })
 export class NavbarComponent {
   @Input() title!: string;
-  constructor(private router: Router, private route: ActivatedRoute) {}
+  constructor(
+    private router: Router,
+    private route: ActivatedRoute,
+    private ms: MediaService
+  ) {}
   back() {
-    // Use the navigate method with a relative path
-    this.router.navigate(["../"], { relativeTo: this.route });
+    const pathNow = this.route.snapshot.queryParams["path"];
+    if (pathNow.includes("/")) {
+      let parentPathArray = pathNow.split("/");
+      parentPathArray.pop();
+      let parentPath = parentPathArray.join("/");
+      this.router.navigate(["/album"], {
+        queryParams: { path: parentPath },
+      });
+    } else {
+      // Use the navigate method with a relative path
+      this.router.navigate(["../"], { relativeTo: this.route });
+    }
+
+    this.ms.clearStates();
   }
+
   hideToolbar = false;
   lastScrollTop = 0;
 
