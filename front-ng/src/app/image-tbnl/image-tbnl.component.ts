@@ -26,27 +26,48 @@ import {
 })
 // 缩略图
 export class ImageTbnlComponent implements OnInit {
-  @Input() path!: string;
-  @Input() name!: string;
+  @Input() path: string | undefined;
+  @Input() name: string | undefined;
+  @Input() id: string | undefined;
   @Input() borderRadius: string = "";
   imageUrl: string = LOADING_GIF;
 
   constructor(private ms: MediaService) {}
 
   ngOnInit(): void {
-    this.ms.fetchMediaEvent(this.path, this.name, 1).subscribe(
-      (event) => {
-        if (event.type === HttpEventType.Response) {
-          const blob = event.body as Blob;
-          const objectUrl = URL.createObjectURL(blob);
-          this.imageUrl = objectUrl;
+    let path = this.path;
+    let name = this.name;
+    let id = this.id;
+    if (path && name) {
+      this.ms.fetchMediaEvent(path, name, 1).subscribe(
+        (event) => {
+          if (event.type === HttpEventType.Response) {
+            const blob = event.body as Blob;
+            const objectUrl = URL.createObjectURL(blob);
+            this.imageUrl = objectUrl;
+          }
+        },
+        (error: HttpErrorResponse) => {
+          if (error.status === HttpStatusCode.Unauthorized) {
+            this.imageUrl = ICON_LOCK;
+          }
         }
-      },
-      (error: HttpErrorResponse) => {
-        if (error.status === HttpStatusCode.Unauthorized) {
-          this.imageUrl = ICON_LOCK;
+      );
+    } else if (id) {
+      this.ms.fetchMediaIdEvent(id, 1).subscribe(
+        (event) => {
+          if (event.type === HttpEventType.Response) {
+            const blob = event.body as Blob;
+            const objectUrl = URL.createObjectURL(blob);
+            this.imageUrl = objectUrl;
+          }
+        },
+        (error: HttpErrorResponse) => {
+          if (error.status === HttpStatusCode.Unauthorized) {
+            this.imageUrl = ICON_LOCK;
+          }
         }
-      }
-    );
+      );
+    }
   }
 }

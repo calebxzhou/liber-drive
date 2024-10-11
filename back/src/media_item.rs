@@ -9,6 +9,9 @@ use std::io::{BufReader, Cursor, Read};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::Arc;
 use aom_decode::avif::{Avif, Image};
 use aom_decode::Config;
 use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
@@ -16,15 +19,15 @@ use libheif_rs::{ColorSpace, HeifContext, LibHeif, RgbChroma};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
 use webp::WebPMemory;
-
+use crate::album::Album;
 use crate::image_exif::ImageExif;
 use crate::media_item;
 use crate::util::{date_str_to_timestamp, filename_to_timestamp, AnyError, ResultAnyErr};
 
 //图片/视频
 #[serde_with::skip_serializing_none]
-#[derive(Serialize, Deserialize,Clone)]
-pub struct MediaItem {
+#[derive(Serialize,Clone)]
+pub struct MediaItem { 
     pub name: String,
     #[serde(skip_serializing)]
     pub path: PathBuf,
@@ -32,24 +35,26 @@ pub struct MediaItem {
     pub size: u64,
     pub exif: Option<ImageExif>,
     pub duration: Option<u16>,
+    pub pwd: Option<String>
 }
-#[derive(Serialize, Deserialize,Clone)]
+#[derive(Serialize,Clone)]
 pub struct MediaItemInfo {
-    pub name: String, 
+    pub name: String,
     pub time: u64,
     pub size: u64,
     pub exif: Option<ImageExif>,
     pub duration: Option<u16>,
 }
 impl MediaItem {
-    pub fn new(path: PathBuf, name: String, time: u64, size: u64) -> Self {
-        Self {
+    pub fn new( path: PathBuf, name: String, time: u64, size: u64) -> Self {
+        Self { 
             path,
             name,
             time,
             size,
             exif: None,
             duration: None,
+            pwd: None
         }
     }
     //获取扩展名（小写）
@@ -127,7 +132,7 @@ impl MediaItem {
         Ok(())
     }
 
-   
+
     //exif信息缓存路径
     pub fn get_exif_cache_path(&self) -> PathBuf {
         Path::new("cache").join("exif").join(format!(
@@ -210,6 +215,11 @@ impl MediaItem {
             //再取不到 就用系统的修改时间（什么都不动）
         }
         self.time = time;
+    }
+
+    pub fn get_media_id(&self) -> String {
+        format!("{}_{}",self.size,
+                self.name)
     }
 }
 pub fn decode_avif_image(path: &Path) -> ResultAnyErr<()> {

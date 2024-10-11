@@ -53,20 +53,23 @@ macro_rules! match_or_400 {
         }
     };
 }
-pub fn collect_media_from_sub_albums<'a>(album: &'a Album, media_items: &mut Vec<&'a MediaItem>) {
+pub fn collect_media_from_sub_albums<'a>(album: &'a Album, media_ids: &mut Vec<String>) {
     for sub_album in album.sub_albums.values() {
-        media_items.extend(sub_album.medias.values());
-        if media_items.len() >= 4 {
+        for media in sub_album.medias.values() {
+            media_ids.push(media.get_media_id());
+        }
+        if media_ids.len() >= 4 {
             return;
         }
-        collect_media_from_sub_albums(sub_album, media_items);
+        collect_media_from_sub_albums(sub_album, media_ids);
     }
 }
-fn get_selected_media_items(media_items: Vec<&MediaItem>) -> Vec<String> {
+
+fn get_selected_media_items(media_items: Vec<String>) -> Vec<String> {
     if media_items.len() <= 4 {
-        media_items.into_iter().map(|item| item.name.clone()).collect()
+        media_items
     } else {
-        media_items.into_iter().take(4).map(|item| item.name.clone()).collect()
+        media_items.into_iter().take(4).collect()
     }
 }
 
@@ -78,11 +81,7 @@ async fn list_all_albums(
     let mut new_map: HashMap<String, Vec<String>> = HashMap::new();
 
     for (key, album) in &serv.albums {
-        /*if album.pwd.is_some() {
-            continue;
-        }*/
-
-        let mut media_items: Vec<&MediaItem> = album.medias.values().collect();
+        let mut media_items: Vec<String> = album.medias.values().map(|item| item.get_media_id().clone()).collect();
         //不够4个 去子相册里拿
         if media_items.len() < 4 {
             collect_media_from_sub_albums(album, &mut media_items);
@@ -93,8 +92,9 @@ async fn list_all_albums(
     }
 
     Json(&new_map).into_response()
-} 
-#[axum_macros::debug_handler] 
+}
+
+#[axum_macros::debug_handler]
 
 async fn get_album(
     Query(params): Query<HashMap<String, String>>,
@@ -117,7 +117,7 @@ async fn get_album(
     }
     if params.contains_key("tbnl") {
         let media_items: Vec<&MediaItem> = album.medias.values().collect();
-        let selected_items = get_selected_media_items(media_items);
+        let selected_items = get_selected_media_items(media_items.iter().map(|i|i.get_media_id().clone()).collect());
         return Json(selected_items).into_response();
     }
 
@@ -129,7 +129,7 @@ async fn get_album(
         }
         return StatusCode::UNAUTHORIZED.into_response();
     }
-     
+
     Json(album.clone().into_info()).into_response()
 }
 
@@ -140,35 +140,45 @@ async fn get_media(
     State(serv): State<SharedService>,
 ) -> Response<Body> {
     let serv = serv.read().await;
-    let albums_path = match_or_400!(params.get("path"));
-    let media_name = match_or_400!(params.get("name"));
-    let album_names: Vec<&str> = albums_path.split('/').collect();
+    let albums_path = params.get("path");
+    let media_name = params.get("name");
+    let media_id = params.get("id");
 
-    let album = match_or_404!(find_album(&serv.albums, &album_names) );
+    let media = if let Some(media_id) = media_id {
+        serv.medias.get(media_id)
+    } else if let Some((albums_path, media_name)) = albums_path.zip(media_name) {
+        let album_names: Vec<&str> = albums_path.split('/').collect();
+        let album = match_or_404!(find_album(&serv.albums, &album_names));
+        album.medias.get(media_name)
+    } else {
+        return StatusCode::BAD_REQUEST.into_response();
+    };
 
-    let media = match_or_404!( album.medias.get(media_name) );
+    let media = match_or_404!(media);
 
-    //验证密码正确
-    if let Some(album_pwd) = &album.pwd {
-        if let Some(query_pwd) = params.get("pwd") {
-            if query_pwd == album_pwd {
-                return if let Some(level) = params.get("tbnl") {
-                    handle_preview(media, if level == "1" { true } else { false }, &headers).await
-                } else {
-                    handle_file(media, &headers).await
-                }
-            }
+    if let Some(media_pwd) = &media.pwd {
+        return if params.get("pwd").map_or(false, |query_pwd| query_pwd == media_pwd) {
+            handle_media_request(media, &params, &headers).await
+        } else {
+            StatusCode::UNAUTHORIZED.into_response()
         }
-        return StatusCode::UNAUTHORIZED.into_response();
     }
-    //读取预览
-    if let Some(level) = params.get("tbnl") {
-        return handle_preview(media, if level == "1" { true } else { false }, &headers).await;
-    }
-    //读取视频时长
 
-    handle_file(media, &headers).await
+    handle_media_request(media, &params, &headers).await
 }
+
+async fn handle_media_request(
+    media: &MediaItem,
+    params: &HashMap<String, String>,
+    headers: &HeaderMap,
+) -> Response<Body> {
+    if let Some(level) = params.get("tbnl") {
+        handle_preview(media, level == "1", headers).await
+    } else {
+        handle_file(media, headers).await
+    }
+}
+
 fn find_album<'a>(albums: &'a HashMap<String, Album>, album_names: &[&str]) -> Option<&'a Album> {
     let mut current_album = albums.get(album_names[0])?;
     for &name in &album_names[1..] {
@@ -215,8 +225,8 @@ async fn main() {
 
         //读取照片视频
         .route("/media", get(get_media).with_state(serv.clone()))
-        //读取影集 
-        .route("/album", get(get_album).with_state(serv.clone())) 
+        //读取影集
+        .route("/album", get(get_album).with_state(serv.clone()))
         .route("/", get(list_all_albums).with_state(serv.clone()))
         .layer(compression_layer)
         .layer(

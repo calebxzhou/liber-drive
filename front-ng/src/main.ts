@@ -27,6 +27,7 @@ export const routes: Routes = [
     component: AlbumComponent,
   },
   { path: "album", component: AlbumComponent },
+  { path: ":albumName", component: AlbumComponent },
   { path: "", redirectTo: "/home", pathMatch: "full" },
   { path: "**", redirectTo: "/home", pathMatch: "full" },
 ];

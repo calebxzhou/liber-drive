@@ -79,22 +79,32 @@ export class AlbumComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.route.queryParams.subscribe((params) => {
-      this.albumName = params["path"]!;
-      let test = params["test"];
-      this.mediaService.fetchAlbum(this.albumName).subscribe((album) => {
-        if (!album) return;
-        this.album = album;
-        let medias = Object.values(this.album.medias);
-        this.medias = medias;
-        let groups = this.mediaService.groupMediaByDay(medias);
-        this.mediaGroups = groups;
-        this.visibleGroups[Object.keys(groups)[0]] = true;
-        this.title = `${album.name}(${medias.length})`;
-        if (test) {
-          //test路径=默认打开viewer 方便调试
-          this.openViewer(Object.keys(groups)[0], 0);
-        }
+    this.route.paramMap.subscribe((pathParams) => {
+      let album = pathParams.get("albumName");
+      if (album) {
+        this.router.navigate(["/album"], {
+          queryParams: { path: album },
+        });
+        return;
+      }
+
+      this.route.queryParams.subscribe((params) => {
+        this.albumName = params["path"];
+        let test = params["test"];
+        this.mediaService.fetchAlbum(this.albumName).subscribe((album) => {
+          if (!album) return;
+          this.album = album;
+          let medias = Object.values(this.album.medias);
+          this.medias = medias;
+          let groups = this.mediaService.groupMediaByDay(medias);
+          this.mediaGroups = groups;
+          this.visibleGroups[Object.keys(groups)[0]] = true;
+          this.title = `${album.name}`;
+          if (test) {
+            //test路径=默认打开viewer 方便调试
+            this.openViewer(Object.keys(groups)[0], 0);
+          }
+        });
       });
     });
   }

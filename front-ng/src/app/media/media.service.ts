@@ -14,7 +14,7 @@ import { Album, Media, ImageExif } from "./media";
 import { ActivatedRoute, Router } from "@angular/router";
 import { MatDialog, MatDialogConfig } from "@angular/material/dialog";
 import { PasswordDialogComponent } from "../password-dialog/password-dialog.component";
-
+import { saveAs } from "file-saver";
 @Injectable({
   providedIn: "root",
 })
@@ -28,6 +28,10 @@ export class MediaService {
     private router: Router,
     private dialog: MatDialog
   ) {}
+  isWechat() {
+    let userAgent = navigator.userAgent;
+    return /MicroMessenger|WeChat/i.test(userAgent);
+  }
   clearStates() {
     this.pwd = undefined;
   }
@@ -96,8 +100,19 @@ export class MediaService {
       tbnl > -1 ? `&tbnl=${tbnl}` : ""
     }${this.pwd ? `&pwd=${this.pwd}` : ""}`;
   }
+  fetchMediaIdUrl(id: string, tbnl: number) {
+    return `${this.getUrl()}/media?id=${id}${tbnl > -1 ? `&tbnl=${tbnl}` : ""}${
+      this.pwd ? `&pwd=${this.pwd}` : ""
+    }`;
+  }
   //tbnl：预览 -1原图 0大图 1小图
-
+  fetchMediaIdEvent(id: string, tbnl: number): Observable<HttpEvent<Blob>> {
+    return this.http.get(this.fetchMediaIdUrl(id, tbnl), {
+      responseType: "blob",
+      reportProgress: true,
+      observe: "events",
+    });
+  }
   fetchMediaEvent(
     path: string,
     name: string,
@@ -120,6 +135,11 @@ export class MediaService {
       media.name.toLocaleLowerCase().endsWith(".jpg") ||
       media.name.toLocaleLowerCase().endsWith(".heic")
     );
+  }
+  downloadVideo(url: string) {
+    this.http.get(url, { responseType: "blob" }).subscribe((blob) => {
+      saveAs(blob, "1.mp4");
+    });
   }
   groupMediaByDay(mediaArray: Media[]): Record<string, Media[]> {
     const grouped: Record<string, Media[]> = {};

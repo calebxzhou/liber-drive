@@ -1,10 +1,9 @@
-<div class="p-2 cursor-pointer" (click)="goAlbum(album.name)">
+<div class="p-2 cursor-pointer max-w-32" (click)="goAlbum(album.name)">
   <div class="gallery border border-black rounded-2xl">
-    <div *ngFor="let name of album.tbnl_names">
+    <div *ngFor="let id of album.tbnl_ids">
       <lg-image-tbnl
         [borderRadius]="'16px'"
-        [path]="path"
-        [name]="name"
+        [id]="id"
         class="rounded-xl overflow-hidden"
       />
     </div>

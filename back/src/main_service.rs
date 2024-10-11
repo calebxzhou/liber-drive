@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use crate::album::{Album, AlbumInfo};
 use crate::util::ResultAnyErr;
 use log::{debug, error, info};
@@ -5,6 +6,7 @@ use std::collections::HashMap;
 use std::fs::{self, DirEntry, File};
 use std::io::{stdout, Read, Write};
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::sync::Arc;
 use rayon::prelude::*;
 use tokio::sync::{Mutex, RwLock};
@@ -15,12 +17,15 @@ use crate::media_item::{self, is_jpg_image, is_video, MediaItem};
 pub type SharedService = Arc<RwLock<MainService>>;
 #[derive(Clone,Serialize)]
 pub struct MainService {
-    pub albums: HashMap<String, Album>, 
+    pub albums: HashMap<String, Album>,
+    // id to media
+    pub medias: HashMap<String, MediaItem>
 }
 impl MainService {
     pub fn new(drive_dirs: &Vec<PathBuf>) -> SharedService {
-        let albums = Self::scan_all_albums(drive_dirs).expect("扫描相册错误！");
-        let slf = Self { albums };
+        let mut medias: HashMap<String, MediaItem> = HashMap::new();
+        let albums = Self::scan_all_albums(drive_dirs, &mut medias).expect("扫描相册错误！");
+        let slf = Self { albums , medias};
         slf.build_tbnls();
         let service = Arc::new(RwLock::new(slf));
 
@@ -45,9 +50,11 @@ impl MainService {
         service
     }
     async fn update_albums(&mut self, drive_dirs: &Vec<PathBuf>) {
-        match Self::scan_all_albums(drive_dirs) {
+        let mut medias: HashMap<String, MediaItem> = HashMap::new();
+        match Self::scan_all_albums(drive_dirs, &mut medias) {
             Ok(new_albums) => {
                 self.albums = new_albums;
+                self.medias = medias;
                 self.build_tbnls();
                 info!("Albums updated successfully.");
             }
@@ -56,21 +63,15 @@ impl MainService {
             }
         }
     }
-    fn build_tbnls(&self){
+    fn build_tbnls(&self) {
         // 多线程建立缩略图
         let albums = &self.albums;
         rayon::join(
             || {
                 albums.par_iter().for_each(|(album_name, album)| {
-                    info!("开始建立缩略图: {}", album_name);
-                    album.medias.par_iter().for_each(|(media_name, media_item)| {
-                        if let Err(e) = media_item.create_preview(true) {
-                            error!("创建小图错误：{:?}", e);
-                        }
-                        if let Err(e) = media_item.create_preview(false) {
-                            error!("创建大图错误：{:?}", e);
-                        }
-                    });
+
+                    album.build_tbnls();
+
                 });
             },
             || {
@@ -80,7 +81,7 @@ impl MainService {
         info!("缩略图OK");
     }
     //单个影集
-    fn scan_all_albums(drive_dirs: &Vec<PathBuf>) -> ResultAnyErr<HashMap<String, Album>> {
+    fn scan_all_albums(drive_dirs: &Vec<PathBuf>,all_medias: &mut HashMap<String, MediaItem>) -> ResultAnyErr<HashMap<String, Album>> {
         let mut all_albums = HashMap::new();
         for drive_dir in drive_dirs {
             info!("开始扫描{:?}", drive_dir);
@@ -92,7 +93,7 @@ impl MainService {
                 .collect::<Vec<DirEntry>>();
             for entry in dir_entries {
 
-                let album = Self::scan_single_album(entry.path()).unwrap();
+                let album = Self::scan_single_album(entry.path(),all_medias).unwrap();
                 if album.medias.len() == 0 && album.sub_albums.len() == 0 {
                     continue;
                 }
@@ -101,72 +102,77 @@ impl MainService {
         }
         Ok(all_albums)
     }
-   
+
     //单个影集
-    fn scan_single_album(album_path: PathBuf) -> ResultAnyErr<Album> {
-        let mut album_medias = HashMap::new();
-        let mut sub_albums = HashMap::new();
-        let mut password = Option::None;
-        //遍历所有下属文件
-        for media_entry in WalkDir::new(&album_path) {
+    fn scan_single_album(album_path: PathBuf, all_medias: &mut HashMap<String, MediaItem>) -> ResultAnyErr<Album> {
+        let mut album = Album::new(
+            album_path.file_name().unwrap().to_string_lossy().into_owned());
+
+        // Scan for album's password first
+        for media_entry in fs::read_dir(&album_path)? {
             let media_entry = media_entry?;
             let path = media_entry.path().to_path_buf();
-            if media_entry.file_type().is_dir() && path != album_path {
+            let name = media_entry.file_name().to_string_lossy().into_owned();
+
+            if name == "pwd.txt" {
+                let mut contents = String::new();
+                File::open(&path)?.read_to_string(&mut contents)?;
+                album.pwd = Some(contents);
+                break;
+            }
+        }
+
+        // Traverse all files and sub-albums
+        for media_entry in fs::read_dir(&album_path)? {
+            let media_entry = media_entry?;
+            let path = media_entry.path().to_path_buf();
+            if media_entry.file_type()?.is_dir() && path != album_path {
                 // Recursively scan sub-albums
-                let sub_album = Self::scan_single_album(path)?;
+                let sub_album = Self::scan_single_album(path, all_medias)?;
                 if sub_album.medias.len() == 0 && sub_album.sub_albums.len() == 0 {
-                    //debug!("跳过空album: {:?}/{}",album_path, sub_album.name);
+                    //debug!("Skipping empty album: {:?}/{}", album_path, sub_album.name);
                     continue;
                 }
-                sub_albums.insert(sub_album.name.clone(), sub_album);
+                album.sub_albums.insert(sub_album.name.clone(), sub_album);
                 continue;
             }
 
-
             let name = media_entry.file_name().to_string_lossy().into_owned();
-            //密码
-            if name == "pwd.txt"{
-                let mut contents = String::new();
-                File::open(&path)?.read_to_string(&mut contents)?;
-                password =  Option::Some(contents)
-            };
-            //跳过点开头的文件
+            // Skip dot files
             if name.starts_with(".") {
                 continue;
             }
-            //既不是图片也不是视频，跳过
+            // Skip non-image and non-video files
             if !(media_item::is_video(&path) || media_item::is_jpg_image(&path)) {
                 continue;
             }
-            print!("\r读取中 {}", path.display());
+            print!("\rReading {}", path.display());
             stdout().flush().unwrap();
             let size = media_item::get_file_size(&path)?;
             let time = media_item::get_file_created_time(&path)?;
 
             let mut media = MediaItem::new(path, name.clone(), time, size);
+            media.pwd = album.pwd.clone();
             if is_jpg_image(&media.path) {
                 if let Err(e) = media.create_exif_cache() {
-                    error!("创建exif错误，{:?}", e);
+                    error!("Error creating exif cache, {:?}", e);
                 }
                 if let Err(e) = media.read_exif_cache() {
-                    error!("读取exif错误，{:?}", e);
+                    error!("Error reading exif cache, {:?}", e);
                 }
             } else if is_video(&media.path) {
                 if let Err(e) = media.create_video_duration_cache() {
-                    error!("创建video cache错误，{:?}", e);
-                };
+                    error!("Error creating video cache, {:?}", e);
+                }
                 if let Err(e) = media.read_video_duration_cache() {
-                    error!("读取video cache错误，{:?}", e);
-                };
+                    error!("Error reading video cache, {:?}", e);
+                }
             }
             media.update_media_time();
-            album_medias.insert(name.clone(), media);
+            all_medias.insert(media.get_media_id(), media.clone());
+            album.medias.insert(name.clone(), media);
         }
-        Ok(Album::new(
-            album_path.file_name().unwrap().to_string_lossy().into_owned(),
-            album_medias,
-            sub_albums,
-            password
-        ))
+        Ok(album)
     }
+
 }

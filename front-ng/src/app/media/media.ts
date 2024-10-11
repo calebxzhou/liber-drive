@@ -6,9 +6,8 @@ export interface Album {
   sub_albums: AlbumInfo[];
 }
 export interface AlbumInfo {
-  parent: string | undefined;
   name: string;
-  tbnl_names: string[];
+  tbnl_ids: string[];
 }
 export interface Media {
   name: string;

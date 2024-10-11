@@ -44,9 +44,8 @@ export class HomeComponent implements OnInit {
         .map((albumName) => {
           let mediaNames = albums[albumName];
           return {
-            parent: undefined,
             name: albumName,
-            tbnl_names: mediaNames,
+            tbnl_ids: mediaNames,
           };
         })
         .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by album name

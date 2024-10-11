@@ -270,10 +270,12 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
           if (original) {
             this.isOriginalLoaded = true;
             this.snackBar.open(
-              `已载入原图(⏰${((t2 - t1) / 1000).toFixed(2)}s)`,
+              `已载入原图(⏰${((t2 - t1) / 1000).toFixed(
+                2
+              )}s) 长按或鼠标右键保存`,
               "x",
               {
-                duration: 1000,
+                duration: 3000,
               }
             );
           }
@@ -283,6 +285,14 @@ export class MediaViewerComponent implements OnInit, OnDestroy, AfterViewInit {
   }
   isImage() {
     return this.mediaService.isImage(this.medias[this.index]);
+  }
+  downloadVideo() {
+    if (this.mediaService.isWechat()) {
+      alert(
+        "微信无法下载视频，请使用微软Edge、夸克、QQ浏览器下载\n右上角三个点——“在浏览器打开”"
+      );
+      return;
+    }
   }
   isVideo() {
     return this.mediaService.isVideo(this.medias[this.index]);
