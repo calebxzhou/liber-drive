@@ -4,7 +4,6 @@
 
   <!-- 顶部 -->
   <div class="flex z-20">
-    <button class="text-2xl" (click)="close()">◀️</button>
     <div>
       <!--日期第一行 时间第二行-->
       <span class="text-xs block leading-none text-white">{{
@@ -13,6 +12,7 @@
       <span class="leading-none text-white">{{ title.split(" ")[1] }}</span>
     </div>
     <lg-exif-display [exif]="exif" class="ml-2"></lg-exif-display>
+    <button class="text-3xl" (click)="close()">◀️</button>
     <!-- 停止播放按钮 -->
     <button
       class="text-2xl text-white"
@@ -21,6 +21,15 @@
     >
       ⏹️停止视频
     </button>
+    <a
+      [href]="mediaUrl(medias[index], true)"
+      (click)="downloadVideo()"
+      class="text-2xl text-white"
+      *ngIf="isVideo() && isPlayingVideo"
+      download
+    >
+      💾下载视频
+    </a>
   </div>
   <button
     class="absolute top-10 text-white"
@@ -44,7 +53,7 @@
   <!-- 不停止视频不让换 -->
   <!-- 前图片 -->
   <button
-    class="absolute left-0 text-2xl top-[45%] w-10 bg-opacity-70 bg-black"
+    class="absolute left-0 text-2xl top-[25%] w-10 bg-opacity-70 bg-black rounded-2xl"
     (click)="changeMedia(-1)"
     *ngIf="index > 0 && !isPlayingVideo"
   >
@@ -52,7 +61,7 @@
   </button>
   <!-- 后图片 -->
   <button
-    class="absolute left-0 text-2xl top-[55%] w-10 bg-opacity-70 bg-black"
+    class="absolute left-0 text-2xl top-[35%] w-10 bg-opacity-70 bg-black rounded-2xl"
     (click)="changeMedia(1)"
     *ngIf="index < medias.length - 1 && !isPlayingVideo"
   >
@@ -60,7 +69,7 @@
   </button>
   <!-- 后图片 -->
   <button
-    class="absolute right-0 text-2xl top-[45%] w-10 bg-opacity-70 bg-black"
+    class="absolute right-0 text-2xl top-[25%] w-10 bg-opacity-70 bg-black rounded-2xl"
     (click)="changeMedia(1)"
     *ngIf="index < medias.length - 1 && !isPlayingVideo"
   >
@@ -68,7 +77,7 @@
   </button>
   <!-- 前图片 -->
   <button
-    class="absolute right-0 text-2xl top-[55%] w-10 bg-opacity-70 bg-black"
+    class="absolute right-0 text-2xl top-[35%] w-10 bg-opacity-70 bg-black rounded-2xl"
     (click)="changeMedia(-1)"
     *ngIf="index > 0 && !isPlayingVideo"
   >
@@ -121,7 +130,7 @@
       *ngIf="isImage() && !isOriginalLoaded"
       (click)="fetch(medias[index], true)"
     >
-      💾原图
+      💾下载
       <div class="leading-none">
         <div class="block text-2xs">
           {{ fullImageSize.split(" ")[0] }}

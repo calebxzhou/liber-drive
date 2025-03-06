@@ -6,7 +6,7 @@ import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatSelectModule } from "@angular/material/select";
 import { MatInputModule } from "@angular/material/input";
 import { MatFormFieldModule } from "@angular/material/form-field";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { MatButtonModule } from "@angular/material/button";
 @Component({
   selector: "lg-password-dialog",
@@ -28,12 +28,13 @@ export class PasswordDialogComponent {
 
   constructor(
     public dialogRef: MatDialogRef<PasswordDialogComponent>,
+    private route: ActivatedRoute,
     private router: Router
   ) {}
 
   onCancel(): void {
     this.dialogRef.close();
-    this.router.navigate(["/"]);
+    this.router.navigate(["../"], { relativeTo: this.route });
   }
 
   onSubmit(): void {

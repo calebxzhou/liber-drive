@@ -327,7 +327,7 @@ fn matches_extension(path: &PathBuf, extensions: &[&str]) -> bool {
 }
 //是否视频
 pub fn is_video(path: &PathBuf) -> bool {
-    matches_extension(path, &["mp4"])
+    matches_extension(path, &["mp4","mov"])
 }
 //是否图片
 pub fn is_image(path: &PathBuf) -> bool {
